@@ -213,7 +213,7 @@ tr.clickable:hover{background:var(--green-light);}
         <h3 style="font-size:15px;margin-bottom:10px;">Data Pelanggan</h3>
         <div class="field"><label>Nama Pelanggan</label>
           <div style="display:flex;gap:6px;">
-            <input type="text" id="ordNama" placeholder="Nama..." list="namaList" style="flex:1;">
+            <input type="text" id="ordNama" placeholder="Nama..." list="namaList" autocomplete="off" style="flex:1;">
             <button type="button" class="btn btn-outline" id="pickContactBtn" style="display:none;white-space:nowrap;">📱 Kontak</button>
           </div>
         </div>
@@ -221,7 +221,7 @@ tr.clickable:hover{background:var(--green-light);}
         <div class="field"><label>Nomor WhatsApp</label>
           <div style="display:flex;gap:6px;">
             <span class="mono" style="padding:9px 11px;background:var(--green-light);border-radius:10px;color:var(--green-dark);font-weight:700;display:flex;align-items:center;">+62</span>
-            <input type="tel" id="ordWa" placeholder="819xxxxxxxx" list="waList" style="flex:1;">
+            <input type="tel" id="ordWa" placeholder="819xxxxxxxx" list="waList" autocomplete="off" style="flex:1;">
           </div>
         </div>
         <datalist id="waList"></datalist>
@@ -384,8 +384,11 @@ tr.clickable:hover{background:var(--green-light);}
 </div>
 
 <script>
-/* ================= CONFIG ================= */
-const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbzTkz6_KfVXuoAR185v4bcJcFUlYToirj0vs45hATJ-er7P0fnzTKMgwBRx97ko__d1pg/exec';
+/* ============================================================
+   ⚙️ EDIT DI SINI SAJA — baris paling atas file ini.
+   Ganti dengan URL Web App Apps Script kamu (diakhiri /exec).
+   ============================================================ */
+const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbwWJjstVd6T2jLhCH6i9pifPuaSFyVyVlkTaG44onIczsNOAwB8PynqR5Wku0LD96AyuQ/exec';
 const BUNDLE_QTY = 6, BUNDLE_HARGA = 10000;
 const NAMA_USAHA = 'Bakpao Ijo Gembul';
 
@@ -449,7 +452,7 @@ function switchView(name){
   document.getElementById('view-'+name).classList.add('active');
   document.querySelectorAll('#tabs button').forEach(b=>b.classList.toggle('active', b.dataset.view===name));
   if(name==='dashboard') loadDashboard();
-  if(name==='pesananBaru') initOrderForm();
+  if(name==='pesananBaru'){ loadMasterData().then(initOrderForm); }
   if(name==='riwayat') loadRiwayat();
   if(name==='produk') loadProduk();
   if(name==='pelanggan') loadPelanggan();
@@ -843,21 +846,24 @@ document.getElementById('printInvoiceBtn').addEventListener('click', ()=>window.
 document.getElementById('waInvoiceBtn').addEventListener('click', ()=>{
   const {order, invoices} = currentOrder;
   const inv = invoices[0];
-  const msg = `Halo Bapak/Ibu *${order.nama_pelanggan}*,\nInvoice pesanan Anda sudah kami buat. 🧾\n\n_Nomor Invoice:_ *${inv.nomor_invoice}*\n*Total Tagihan:* ${rupiah(inv.total_tagihan)}\n_Status Pembayaran:_ *${order.status_pembayaran}*\n\nTerima kasih telah memesan Bakpao Ijo Gembul 🙏`;
+  const msg = `Halo Kak *${order.nama_pelanggan}*,\nInvoice pesanan Anda sudah kami buat. 🧾\n\n_Nomor Invoice:_ *${inv.nomor_invoice}*\n*Total Tagihan:* ${rupiah(inv.total_tagihan)}\n_Status Pembayaran:_ *${order.status_pembayaran}*\n\nTerima kasih telah memesan Bakpao Ijo Gembul 🙏`;
   window.open(`https://wa.me/${normalizeWa(order.whatsapp)}?text=${encodeURIComponent(msg)}`, '_blank');
 });
-const STATUS_WA_NOTE = {
-  'Pesanan Baru': 'Jika PO ini belum sesuai dengan pesanan kakak, silahkan info ke admin kami.',
-  'Diproses': 'Bakpao kakak sedang diproses, mohon ditunggu ya.',
-  'Siap Diambil / Siap Dikirim': 'Pesanan sudah selesai, bisa diambil/siap kirim ke kakak.',
-  'Dibatalkan': 'Pesanan bakpao kakak dibatalkan, jangan lupa order lagi ya.'
-};
 function kirimWaPesanan(){
   const {order, items} = currentOrder;
   const daftar = items.map(it=>`• ${it.nama_produk} x${it.qty}`).join('\n');
-  const catatanLine = order.catatan ? `\n*Catatan:* ${order.catatan}` : '';
-  const note = STATUS_WA_NOTE[order.status_pesanan];
-  const msg = `Halo Bapak/Ibu *${order.nama_pelanggan}*,\nPesanan Anda di *Bakpao Ijo Gembul* sudah kami terima. 🥟\n\n_Nomor Pesanan:_ *${order.nomor_pesanan}*\n_Tanggal Pesanan:_ *${formatHariTanggal(order.tanggal_pesan)}*\n\n*Detail Pesanan:*\n${daftar}${catatanLine}\n\n*Total Pesanan:* ${rupiah(order.total)}\n_Status Pesanan:_ *${order.status_pesanan}*\n${note ? '\n'+note+'\n' : ''}\nTerima kasih telah memesan Bakpao Ijo Gembul 🙏`;
+  const isBaru = order.status_pesanan === 'Pesanan Baru';
+  const parts = [];
+  parts.push(`Halo Kak *${order.nama_pelanggan}*,`);
+  if(isBaru) parts.push(`Pesanan Anda di *Bakpao Ijo Gembul* sudah kami terima. 🥟`);
+  parts.push(`_Nomor Pesanan:_ *${order.nomor_pesanan}*\n_Tanggal Pesanan:_ *${formatHariTanggal(order.tanggal_pesan)}*`);
+  let detail = `*Detail Pesanan:*\n${daftar}`;
+  if(order.catatan) detail += `\n*Catatan:* ${order.catatan}`;
+  parts.push(detail);
+  parts.push(`*Total Pesanan:* ${rupiah(order.total)}\n_Status Pesanan:_ *${order.status_pesanan}*`);
+  if(isBaru) parts.push(`Jika PO ini belum sesuai dengan pesanan kakak, silahkan info ke admin kami.`);
+  parts.push(`Terima kasih telah memesan Bakpao Ijo Gembul 🙏`);
+  const msg = parts.join('\n\n');
   window.open(`https://wa.me/${normalizeWa(order.whatsapp)}?text=${encodeURIComponent(msg)}`, '_blank');
 }
 
