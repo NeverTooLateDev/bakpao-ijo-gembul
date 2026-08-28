@@ -779,13 +779,13 @@ document.getElementById('printInvoiceBtn').addEventListener('click', ()=>window.
 document.getElementById('waInvoiceBtn').addEventListener('click', ()=>{
   const {order, invoices} = currentOrder;
   const inv = invoices[0];
-  const msg = `Halo ${order.nama_pelanggan},\nInvoice pesanan Anda sudah kami buat.\n\nNomor Invoice: ${inv.nomor_invoice}\nTotal Tagihan: ${rupiah(inv.total_tagihan)}\nStatus Pembayaran: ${order.status_pembayaran}\n\nTerima kasih telah memesan Bakpao Ijo Gembul.`;
+  const msg = `Halo Bapak/Ibu *${order.nama_pelanggan}*,\nInvoice pesanan Anda sudah kami buat. 🧾\n\n_Nomor Invoice:_ *${inv.nomor_invoice}*\n*Total Tagihan:* ${rupiah(inv.total_tagihan)}\n_Status Pembayaran:_ *${order.status_pembayaran}*\n\nTerima kasih telah memesan Bakpao Ijo Gembul 🙏`;
   window.open(`https://wa.me/${normalizeWa(order.whatsapp)}?text=${encodeURIComponent(msg)}`, '_blank');
 });
 function kirimWaPesanan(){
   const {order, items} = currentOrder;
-  const daftar = items.map(it=>`- ${it.nama_produk} x${it.qty}`).join('\n');
-  const msg = `Halo ${order.nama_pelanggan},\nPesanan Anda di Bakpao Ijo Gembul sudah kami terima.\nNomor Pesanan: ${order.nomor_pesanan}\n\nDetail Pesanan:\n${daftar}\n\nTotal Pesanan: ${rupiah(order.total)}\nStatus Pesanan: ${order.status_pesanan}\nTerima kasih telah memesan Bakpao Ijo Gembul.`;
+  const daftar = items.map(it=>`• ${it.nama_produk} x${it.qty}`).join('\n');
+  const msg = `Halo Bapak/Ibu *${order.nama_pelanggan}*,\nPesanan Anda di *Bakpao Ijo Gembul* sudah kami terima. 🥟\n\n_Nomor Pesanan:_ *${order.nomor_pesanan}*\n\n*Detail Pesanan:*\n${daftar}\n\n*Total Pesanan:* ${rupiah(order.total)}\n_Status Pesanan:_ *${order.status_pesanan}*\n\nTerima kasih telah memesan Bakpao Ijo Gembul 🙏`;
   window.open(`https://wa.me/${normalizeWa(order.whatsapp)}?text=${encodeURIComponent(msg)}`, '_blank');
 }
 
