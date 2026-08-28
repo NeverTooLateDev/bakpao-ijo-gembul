@@ -211,9 +211,21 @@ tr.clickable:hover{background:var(--green-light);}
     <div class="grid grid-2" style="margin-top:14px;align-items:start;">
       <div class="card">
         <h3 style="font-size:15px;margin-bottom:10px;">Data Pelanggan</h3>
-        <div class="field"><label>Nomor WhatsApp</label><input type="tel" id="ordWa" placeholder="08xxxxxxxxxx" list="waList"></div>
+        <div class="field"><label>Nama Pelanggan</label>
+          <div style="display:flex;gap:6px;">
+            <input type="text" id="ordNama" placeholder="Nama..." list="namaList" style="flex:1;">
+            <button type="button" class="btn btn-outline" id="pickContactBtn" style="display:none;white-space:nowrap;">📱 Kontak</button>
+          </div>
+        </div>
+        <datalist id="namaList"></datalist>
+        <div class="field"><label>Nomor WhatsApp</label>
+          <div style="display:flex;gap:6px;">
+            <span class="mono" style="padding:9px 11px;background:var(--green-light);border-radius:10px;color:var(--green-dark);font-weight:700;display:flex;align-items:center;">+62</span>
+            <input type="tel" id="ordWa" placeholder="819xxxxxxxx" list="waList" style="flex:1;">
+          </div>
+        </div>
         <datalist id="waList"></datalist>
-        <div class="field"><label>Nama Pelanggan</label><input type="text" id="ordNama" placeholder="Nama..."></div>
+        <div class="field"><label>Tanggal Pesanan (untuk kapan)</label><input type="date" id="ordTanggalPesan"></div>
         <div class="field"><label>Alamat</label><textarea id="ordAlamat" placeholder="Alamat pengiriman/pengambilan..."></textarea></div>
         <div class="field"><label>Catatan Pesanan</label><textarea id="ordCatatan" placeholder="Contoh: ambil sore ini..."></textarea></div>
 
@@ -355,6 +367,22 @@ tr.clickable:hover{background:var(--green-light);}
   </div>
 </div>
 
+<!-- MODAL: Pelanggan -->
+<div class="modal-bg" id="modalPelanggan">
+  <div class="modal">
+    <h3>Edit Data Pelanggan</h3>
+    <input type="hidden" id="modalPelangganId">
+    <div class="field"><label>Nama</label><input type="text" id="modalPelangganNama"></div>
+    <div class="field"><label>Nomor WhatsApp</label><input type="tel" id="modalPelangganWa"></div>
+    <div class="field"><label>Alamat</label><textarea id="modalPelangganAlamat"></textarea></div>
+    <div class="field"><label>Catatan</label><input type="text" id="modalPelangganCatatan"></div>
+    <div class="modal-actions">
+      <button class="btn btn-outline" id="modalPelangganCancel">Batal</button>
+      <button class="btn btn-primary" id="modalPelangganSave">Simpan</button>
+    </div>
+  </div>
+</div>
+
 <script>
 /* ================= CONFIG ================= */
 const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbwWJjstVd6T2jLhCH6i9pifPuaSFyVyVlkTaG44onIczsNOAwB8PynqR5Wku0LD96AyuQ/exec';
@@ -373,8 +401,15 @@ function rupiah(n){ return 'Rp ' + Math.round(n||0).toLocaleString('id-ID'); }
 function badgeClass(s){ return (s||'').replace(/\s+/g,'_').replace(/\//g,''); }
 function normalizeWa(wa){
   let s = String(wa||'').replace(/[^0-9]/g,'');
-  if(s.indexOf('0')===0) s = '62'+s.substring(1);
-  return s;
+  if(s.indexOf('62')===0) return s;
+  if(s.indexOf('0')===0) return '62'+s.substring(1);
+  return '62'+s;
+}
+function formatHariTanggal(dateStr){
+  if(!dateStr) return '-';
+  const d = new Date(dateStr);
+  if(isNaN(d.getTime())) return '-';
+  return d.toLocaleDateString('id-ID', {weekday:'long', day:'numeric', month:'long', year:'numeric'});
 }
 async function api(action, payload){
   const body = Object.assign({ action }, payload||{});
@@ -498,17 +533,44 @@ function initOrderForm(){
   document.getElementById('ordDiskon').value=0;
   document.getElementById('ordOngkir').value=0;
   document.getElementById('itemRows').innerHTML='';
-  document.getElementById('waList').innerHTML = pelangganList.map(p=>`<option value="${p.whatsapp}">${p.nama}</option>`).join('');
+  const besok = new Date(); besok.setDate(besok.getDate()+1);
+  document.getElementById('ordTanggalPesan').value = besok.toISOString().slice(0,10);
+  document.getElementById('waList').innerHTML = pelangganList.map(p=>`<option value="${normalizeWa(p.whatsapp).replace(/^62/,'')}">${p.nama}</option>`).join('');
+  document.getElementById('namaList').innerHTML = [...new Set(pelangganList.map(p=>p.nama))].map(n=>`<option value="${n}"></option>`).join('');
+  document.getElementById('pickContactBtn').style.display = ('contacts' in navigator && 'ContactsManager' in window) ? 'inline-block' : 'none';
   addItemRow();
   renderOrderSummary();
   document.getElementById('ordStatusBox').className='status-box';
 }
 document.getElementById('ordWa').addEventListener('change', function(){
-  const found = pelangganList.find(p=>p.whatsapp===this.value);
+  const typed = normalizeWa(this.value);
+  const found = pelangganList.find(p=>normalizeWa(p.whatsapp)===typed);
   if(found){
     document.getElementById('ordNama').value = found.nama;
     document.getElementById('ordAlamat').value = found.alamat||'';
   }
+});
+document.getElementById('ordNama').addEventListener('change', function(){
+  const found = pelangganList.find(p=>p.nama===this.value);
+  if(found){
+    document.getElementById('ordWa').value = normalizeWa(found.whatsapp).replace(/^62/,'');
+    document.getElementById('ordAlamat').value = found.alamat||'';
+  }
+});
+document.getElementById('pickContactBtn').addEventListener('click', async ()=>{
+  try{
+    const contacts = await navigator.contacts.select(['name','tel'], {multiple:false});
+    if(contacts && contacts.length){
+      const c = contacts[0];
+      if(c.name && c.name[0]) document.getElementById('ordNama').value = c.name[0];
+      if(c.tel && c.tel[0]){
+        let num = c.tel[0].replace(/[^0-9]/g,'');
+        if(num.indexOf('62')===0) num = num.substring(2);
+        else if(num.indexOf('0')===0) num = num.substring(1);
+        document.getElementById('ordWa').value = num;
+      }
+    }
+  }catch(e){ /* dibatalkan / tidak didukung */ }
 });
 let itemRowSeq = 0;
 function addItemRow(){
@@ -598,22 +660,23 @@ document.getElementById('ordDiskon').addEventListener('input', renderOrderSummar
 document.getElementById('ordOngkir').addEventListener('input', renderOrderSummary);
 
 document.getElementById('ordSubmitBtn').addEventListener('click', async ()=>{
-  const wa = document.getElementById('ordWa').value.trim();
+  const waRaw = document.getElementById('ordWa').value.trim();
   const nama = document.getElementById('ordNama').value.trim();
   const results = getOrderItemResults();
   const box = document.getElementById('ordStatusBox');
   box.className='status-box';
-  if(!wa || !nama){ box.textContent='Nomor WhatsApp dan Nama pelanggan wajib diisi.'; box.className='status-box show err'; return; }
+  if(!waRaw || !nama){ box.textContent='Nomor WhatsApp dan Nama pelanggan wajib diisi.'; box.className='status-box show err'; return; }
   if(results.length===0){ box.textContent='Pilih minimal satu produk.'; box.className='status-box show err'; return; }
   const btn = document.getElementById('ordSubmitBtn');
   btn.disabled=true; btn.textContent='Menyimpan...';
   try{
     const payload = {
-      customer:{ nama, whatsapp:wa, alamat:document.getElementById('ordAlamat').value.trim(), catatan:'' },
+      customer:{ nama, whatsapp:normalizeWa(waRaw), alamat:document.getElementById('ordAlamat').value.trim(), catatan:'' },
       items: results.map(r=>({ productId:r.productId, tipeInput:r.tipeInput, inputValue:r.inputValue, keterangan:r.keterangan })),
       diskon:Number(document.getElementById('ordDiskon').value)||0,
       biayaKirim:Number(document.getElementById('ordOngkir').value)||0,
-      catatan:document.getElementById('ordCatatan').value.trim()
+      catatan:document.getElementById('ordCatatan').value.trim(),
+      tanggalPesan: document.getElementById('ordTanggalPesan').value
     };
     const res = await api('createOrder', payload);
     if(res.status==='ok'){
@@ -675,7 +738,8 @@ function renderDetail(){
       <div style="display:flex;justify-content:space-between;flex-wrap:wrap;gap:10px;">
         <div>
           <h2>${order.nomor_pesanan}</h2>
-          <p style="color:var(--ink-soft);font-size:13px;margin-top:4px;">${new Date(order.tanggal).toLocaleString('id-ID')}</p>
+          <p style="color:var(--ink-soft);font-size:13px;margin-top:4px;">Dibuat: ${new Date(order.tanggal).toLocaleString('id-ID')}</p>
+          <p style="color:var(--ink-soft);font-size:13px;margin-top:2px;">Untuk: <b style="color:var(--green-dark);">${formatHariTanggal(order.tanggal_pesan)}</b></p>
         </div>
         <div style="text-align:right;">
           <span class="badge st-${badgeClass(order.status_pesanan)}">${order.status_pesanan}</span>
@@ -782,10 +846,18 @@ document.getElementById('waInvoiceBtn').addEventListener('click', ()=>{
   const msg = `Halo Bapak/Ibu *${order.nama_pelanggan}*,\nInvoice pesanan Anda sudah kami buat. 🧾\n\n_Nomor Invoice:_ *${inv.nomor_invoice}*\n*Total Tagihan:* ${rupiah(inv.total_tagihan)}\n_Status Pembayaran:_ *${order.status_pembayaran}*\n\nTerima kasih telah memesan Bakpao Ijo Gembul 🙏`;
   window.open(`https://wa.me/${normalizeWa(order.whatsapp)}?text=${encodeURIComponent(msg)}`, '_blank');
 });
+const STATUS_WA_NOTE = {
+  'Pesanan Baru': 'Jika PO ini belum sesuai dengan pesanan kakak, silahkan info ke admin kami.',
+  'Diproses': 'Bakpao kakak sedang diproses, mohon ditunggu ya.',
+  'Siap Diambil / Siap Dikirim': 'Pesanan sudah selesai, bisa diambil/siap kirim ke kakak.',
+  'Dibatalkan': 'Pesanan bakpao kakak dibatalkan, jangan lupa order lagi ya.'
+};
 function kirimWaPesanan(){
   const {order, items} = currentOrder;
   const daftar = items.map(it=>`• ${it.nama_produk} x${it.qty}`).join('\n');
-  const msg = `Halo Bapak/Ibu *${order.nama_pelanggan}*,\nPesanan Anda di *Bakpao Ijo Gembul* sudah kami terima. 🥟\n\n_Nomor Pesanan:_ *${order.nomor_pesanan}*\n\n*Detail Pesanan:*\n${daftar}\n\n*Total Pesanan:* ${rupiah(order.total)}\n_Status Pesanan:_ *${order.status_pesanan}*\n\nTerima kasih telah memesan Bakpao Ijo Gembul 🙏`;
+  const catatanLine = order.catatan ? `\n*Catatan:* ${order.catatan}` : '';
+  const note = STATUS_WA_NOTE[order.status_pesanan];
+  const msg = `Halo Bapak/Ibu *${order.nama_pelanggan}*,\nPesanan Anda di *Bakpao Ijo Gembul* sudah kami terima. 🥟\n\n_Nomor Pesanan:_ *${order.nomor_pesanan}*\n_Tanggal Pesanan:_ *${formatHariTanggal(order.tanggal_pesan)}*\n\n*Detail Pesanan:*\n${daftar}${catatanLine}\n\n*Total Pesanan:* ${rupiah(order.total)}\n_Status Pesanan:_ *${order.status_pesanan}*\n${note ? '\n'+note+'\n' : ''}\nTerima kasih telah memesan Bakpao Ijo Gembul 🙏`;
   window.open(`https://wa.me/${normalizeWa(order.whatsapp)}?text=${encodeURIComponent(msg)}`, '_blank');
 }
 
@@ -840,13 +912,39 @@ async function loadPelanggan(){
   const res = await api('listCustomers', {});
   const table = document.getElementById('pelangganTable');
   if(!res.pelanggan || res.pelanggan.length===0){ table.innerHTML='<tbody><tr><td class="empty-msg">Belum ada pelanggan.</td></tr></tbody>'; return; }
-  table.innerHTML = `<thead><tr><th>Nama</th><th>WhatsApp</th><th>Total Pesanan</th><th>Total Transaksi</th><th>Terakhir Pesan</th></tr></thead>
-  <tbody>${res.pelanggan.map(c=>`<tr class="clickable" onclick="searchByCustomer('${c.nama.replace(/'/g,"")}')">
-    <td>${c.nama}</td><td>${c.whatsapp}</td><td>${c.total_pesanan}</td>
+  table.innerHTML = `<thead><tr><th>Nama</th><th>WhatsApp</th><th>Total Pesanan</th><th>Total Transaksi</th><th>Terakhir Pesan</th><th></th></tr></thead>
+  <tbody>${res.pelanggan.map(c=>`<tr>
+    <td>${c.nama}</td><td class="mono">${c.whatsapp}</td><td>${c.total_pesanan}</td>
     <td class="mono">${rupiah(c.total_transaksi)}</td>
     <td>${c.tanggal_terakhir ? new Date(c.tanggal_terakhir).toLocaleDateString('id-ID') : '-'}</td>
+    <td style="white-space:nowrap;">
+      <button class="btn btn-outline" onclick='openPelangganModal(${JSON.stringify(c).replace(/'/g,"&apos;")})'>Edit</button>
+      <button class="btn btn-outline" onclick="searchByCustomer('${c.nama.replace(/'/g,"")}')">Riwayat</button>
+    </td>
   </tr>`).join('')}</tbody>`;
 }
+function openPelangganModal(c){
+  document.getElementById('modalPelangganId').value = c.id;
+  document.getElementById('modalPelangganNama').value = c.nama;
+  document.getElementById('modalPelangganWa').value = c.whatsapp;
+  document.getElementById('modalPelangganAlamat').value = c.alamat||'';
+  document.getElementById('modalPelangganCatatan').value = c.catatan||'';
+  document.getElementById('modalPelanggan').classList.add('show');
+}
+document.getElementById('modalPelangganCancel').addEventListener('click', ()=>document.getElementById('modalPelanggan').classList.remove('show'));
+document.getElementById('modalPelangganSave').addEventListener('click', async ()=>{
+  const pelanggan = {
+    id: document.getElementById('modalPelangganId').value,
+    nama: document.getElementById('modalPelangganNama').value.trim(),
+    whatsapp: normalizeWa(document.getElementById('modalPelangganWa').value.trim()),
+    alamat: document.getElementById('modalPelangganAlamat').value.trim(),
+    catatan: document.getElementById('modalPelangganCatatan').value.trim()
+  };
+  await api('updateCustomer', {pelanggan});
+  document.getElementById('modalPelanggan').classList.remove('show');
+  await loadMasterData();
+  loadPelanggan();
+});
 function searchByCustomer(nama){
   switchView('riwayat');
   document.getElementById('filSearch').value = nama;
