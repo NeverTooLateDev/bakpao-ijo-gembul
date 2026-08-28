@@ -1,0 +1,901 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Bakpao Ijo Gembul — Sistem Pencatatan Penjualan</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@500;600;700&family=Plus+Jakarta+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+:root{
+  --green:#2F6E4F;
+  --green-dark:#1F4D37;
+  --green-mid:#6FA97D;
+  --green-light:#E3F3E7;
+  --paper:#FFFFFF;
+  --bg:#F5FAF6;
+  --ink:#1F2A22;
+  --ink-soft:#5C6B60;
+  --line:rgba(31,42,34,0.13);
+  --amber:#B8860B;
+  --amber-bg:#FCF3D9;
+  --red:#B23A3A;
+  --red-bg:#FBE7E7;
+  --blue:#2563AA;
+  --blue-bg:#E4EEFA;
+  --gray:#64748B;
+  --gray-bg:#EAECEF;
+}
+*{box-sizing:border-box;}
+body{margin:0;background:var(--bg);color:var(--ink);font-family:'Plus Jakarta Sans',sans-serif;min-height:100vh;}
+h1,h2,h3{font-family:'Fredoka',sans-serif;color:var(--green-dark);margin:0;}
+.mono{font-family:'JetBrains Mono',monospace;}
+button{font-family:'Plus Jakarta Sans',sans-serif;cursor:pointer;}
+input,select,textarea{font-family:'Plus Jakarta Sans',sans-serif;}
+
+/* ---------- LOGIN ---------- */
+#loginScreen{min-height:100vh;display:flex;align-items:center;justify-content:center;padding:20px;}
+.login-card{background:var(--paper);border:1px solid var(--line);border-radius:18px;padding:32px 28px;width:100%;max-width:340px;box-shadow:0 10px 30px rgba(31,77,55,0.10);}
+.login-card h1{font-size:22px;text-align:center;margin:8px 0 4px;}
+.login-card p{color:var(--ink-soft);font-size:13.5px;text-align:center;margin:0 0 20px;}
+.login-card label{font-size:12px;font-weight:600;color:var(--ink-soft);text-transform:uppercase;letter-spacing:.03em;}
+.login-card input{width:100%;padding:10px 12px;margin:6px 0 14px;border-radius:10px;border:1px solid var(--line);background:var(--bg);font-size:14px;outline:none;}
+.login-card input:focus{border-color:var(--green-mid);}
+.login-card button{width:100%;background:var(--green);color:#fff;border:none;border-radius:12px;padding:12px;font-family:'Fredoka',sans-serif;font-weight:600;font-size:15px;}
+.login-card button:disabled{opacity:.55;}
+.login-error{background:var(--red-bg);color:var(--red);font-size:13px;padding:9px 11px;border-radius:10px;margin-bottom:12px;display:none;}
+.login-error.show{display:block;}
+
+/* ---------- SHELL ---------- */
+#appShell{display:none;}
+.topbar{position:sticky;top:0;z-index:20;background:var(--green-dark);color:#fff;display:flex;align-items:center;gap:14px;padding:12px 18px;}
+.topbar .brand{display:flex;align-items:center;gap:8px;font-family:'Fredoka',sans-serif;font-weight:600;font-size:16px;flex:1;}
+.topbar .userinfo{font-size:12.5px;opacity:.85;}
+.topbar .logout{background:rgba(255,255,255,0.14);color:#fff;border:none;border-radius:8px;padding:6px 10px;font-size:12px;}
+
+.tabs{display:flex;gap:2px;overflow-x:auto;background:var(--green);padding:0 8px;}
+.tabs button{background:transparent;border:none;color:rgba(255,255,255,0.75);padding:11px 14px;font-size:13.5px;font-weight:600;white-space:nowrap;border-bottom:3px solid transparent;}
+.tabs button.active{color:#fff;border-bottom-color:#fff;}
+
+.view{display:none;max-width:1100px;margin:0 auto;padding:20px 16px 80px;}
+.view.active{display:block;}
+
+.card{background:var(--paper);border:1px solid var(--line);border-radius:16px;padding:18px;box-shadow:0 1px 3px rgba(31,42,34,0.05);}
+.grid{display:grid;gap:14px;}
+.grid-4{grid-template-columns:repeat(4,1fr);}
+.grid-2{grid-template-columns:1fr 1fr;}
+@media(max-width:820px){.grid-4{grid-template-columns:1fr 1fr;}.grid-2{grid-template-columns:1fr;}}
+
+.stat{padding:16px;}
+.stat .label{font-size:12.5px;color:var(--ink-soft);font-weight:600;text-transform:uppercase;letter-spacing:.02em;}
+.stat .value{font-family:'Fredoka',sans-serif;font-size:26px;color:var(--green-dark);margin-top:6px;}
+
+.quickbtns{display:flex;gap:10px;flex-wrap:wrap;margin:16px 0;}
+.quickbtns button{background:var(--green);color:#fff;border:none;border-radius:12px;padding:11px 16px;font-family:'Fredoka',sans-serif;font-weight:600;font-size:13.5px;}
+.quickbtns button.secondary{background:var(--green-light);color:var(--green-dark);}
+
+table{width:100%;border-collapse:collapse;font-size:13.5px;}
+th{text-align:left;color:var(--ink-soft);font-size:11.5px;text-transform:uppercase;letter-spacing:.03em;padding:8px 10px;border-bottom:2px solid var(--line);}
+td{padding:10px;border-bottom:1px solid var(--line);vertical-align:top;}
+tr.clickable{cursor:pointer;}
+tr.clickable:hover{background:var(--green-light);}
+.tablewrap{overflow-x:auto;}
+
+.badge{display:inline-block;padding:3px 10px;border-radius:999px;font-size:11.5px;font-weight:600;white-space:nowrap;}
+.badge.st-Pesanan_Baru{background:var(--gray-bg);color:var(--gray);}
+.badge.st-Diproses{background:var(--amber-bg);color:var(--amber);}
+.badge.st-Siap_Diambil_Siap_Dikirim{background:var(--blue-bg);color:var(--blue);}
+.badge.st-Selesai{background:var(--green-light);color:var(--green-dark);}
+.badge.st-Dibatalkan{background:var(--red-bg);color:var(--red);}
+.badge.pay-Belum_Dibayar{background:var(--red-bg);color:var(--red);}
+.badge.pay-Dibayar_Sebagian{background:var(--amber-bg);color:var(--amber);}
+.badge.pay-Lunas{background:var(--green-light);color:var(--green-dark);}
+
+.field{display:flex;flex-direction:column;gap:4px;margin-bottom:10px;}
+.field label{font-size:12px;font-weight:600;color:var(--ink-soft);text-transform:uppercase;letter-spacing:.02em;}
+.field input,.field select,.field textarea{padding:9px 11px;border-radius:10px;border:1px solid var(--line);background:var(--bg);font-size:14px;outline:none;}
+.field input:focus,.field select:focus,.field textarea:focus{border-color:var(--green-mid);}
+.field textarea{resize:vertical;min-height:44px;}
+
+.item-row{border:1px solid var(--line);border-radius:12px;padding:12px;margin-bottom:10px;background:var(--bg);}
+.item-row .row-top{display:flex;gap:8px;align-items:flex-end;flex-wrap:wrap;}
+.item-row .row-top .field{flex:1;min-width:140px;margin-bottom:0;}
+.item-row .remove-btn{background:var(--red-bg);color:var(--red);border:none;border-radius:8px;padding:9px 12px;font-size:12.5px;font-weight:600;height:40px;}
+.item-row .subline{margin-top:8px;font-size:12.5px;color:var(--ink-soft);display:flex;justify-content:space-between;}
+.item-row .subline b{color:var(--green-dark);font-family:'JetBrains Mono',monospace;}
+
+.add-item-btn{background:var(--green-light);color:var(--green-dark);border:1px dashed var(--green-mid);border-radius:12px;padding:11px;width:100%;font-weight:600;font-size:13.5px;}
+
+.totals{margin-top:14px;border-top:2px dashed var(--line);padding-top:12px;}
+.totals .row{display:flex;justify-content:space-between;padding:4px 0;font-size:14px;}
+.totals .row.final{font-family:'Fredoka',sans-serif;font-size:19px;color:var(--green-dark);font-weight:600;margin-top:6px;}
+.totals .row.final .mono{color:var(--green-dark);}
+
+.btn{border:none;border-radius:10px;padding:10px 16px;font-weight:600;font-size:13.5px;}
+.btn-primary{background:var(--green);color:#fff;}
+.btn-outline{background:transparent;border:1px solid var(--green);color:var(--green-dark);}
+.btn-wa{background:#25D366;color:#fff;}
+.btn:disabled{opacity:.5;}
+
+.filters{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:14px;}
+.filters input,.filters select{padding:8px 10px;border-radius:9px;border:1px solid var(--line);font-size:13px;background:var(--paper);}
+
+.status-box{margin:10px 0;font-size:13.5px;padding:10px 12px;border-radius:10px;display:none;}
+.status-box.show{display:block;}
+.status-box.ok{background:var(--green-light);color:var(--green-dark);}
+.status-box.err{background:var(--red-bg);color:var(--red);}
+
+.modal-bg{display:none;position:fixed;inset:0;background:rgba(31,42,34,0.45);z-index:50;align-items:center;justify-content:center;padding:16px;}
+.modal-bg.show{display:flex;}
+.modal{background:#fff;border-radius:16px;padding:20px;max-width:420px;width:100%;max-height:90vh;overflow-y:auto;}
+.modal h3{margin-bottom:14px;}
+.modal-actions{display:flex;gap:8px;margin-top:14px;justify-content:flex-end;}
+
+.back-link{background:none;border:none;color:var(--green-dark);font-weight:600;font-size:13.5px;padding:0;margin-bottom:14px;}
+
+/* invoice */
+.invoice-box{border:1px solid var(--line);border-radius:14px;padding:26px;background:#fff;}
+.invoice-head{display:flex;justify-content:space-between;align-items:flex-start;border-bottom:2px dashed var(--line);padding-bottom:16px;margin-bottom:16px;}
+.invoice-head .biz{display:flex;gap:10px;align-items:center;}
+.invoice-head .biz h2{font-size:19px;}
+.invoice-head .meta{text-align:right;font-size:13px;color:var(--ink-soft);}
+.invoice-head .meta b{color:var(--green-dark);font-family:'JetBrains Mono',monospace;font-size:15px;}
+.thankyou{margin-top:18px;text-align:center;font-family:'Fredoka',sans-serif;color:var(--green-dark);font-size:14px;padding-top:14px;border-top:1px dashed var(--line);}
+
+.chart-bars{display:flex;align-items:flex-end;gap:5px;height:120px;margin-top:10px;}
+.chart-bars .bar{flex:1;background:var(--green-mid);border-radius:4px 4px 0 0;position:relative;min-height:2px;}
+.chart-bars .bar .lbl{position:absolute;bottom:-18px;left:0;right:0;text-align:center;font-size:9px;color:var(--ink-soft);}
+
+.empty-msg{text-align:center;color:var(--ink-soft);font-size:13.5px;padding:30px 0;}
+
+@media print{
+  .topbar,.tabs,.no-print{display:none !important;}
+  .view{max-width:100%;padding:0;}
+  body{background:#fff;}
+}
+</style>
+</head>
+<body>
+
+<div id="loginScreen">
+  <div class="login-card">
+    <h1>🥟 Bakpao Ijo Gembul</h1>
+    <p>Sistem Pencatatan Penjualan</p>
+    <div class="login-error" id="loginError"></div>
+    <label>Username</label>
+    <input type="text" id="loginUsername" placeholder="username">
+    <label>Password</label>
+    <input type="password" id="loginPassword" placeholder="••••••••">
+    <button id="loginBtn">Masuk</button>
+  </div>
+</div>
+
+<div id="appShell">
+  <div class="topbar no-print">
+    <div class="brand">🥟 Bakpao Ijo Gembul</div>
+    <span class="userinfo" id="userInfo"></span>
+    <button class="logout" id="logoutBtn">Keluar</button>
+  </div>
+  <div class="tabs no-print" id="tabs">
+    <button data-view="dashboard" class="active">Dashboard</button>
+    <button data-view="pesananBaru">Input Pesanan</button>
+    <button data-view="riwayat">Riwayat Pesanan</button>
+    <button data-view="produk">Produk</button>
+    <button data-view="pelanggan">Pelanggan</button>
+    <button data-view="laporan">Laporan</button>
+  </div>
+
+  <!-- DASHBOARD -->
+  <section class="view active" id="view-dashboard">
+    <h2>Dashboard</h2>
+    <div class="grid grid-4" id="dashStats" style="margin-top:14px;"></div>
+    <div class="quickbtns">
+      <button data-goto="pesananBaru">+ Input Pesanan Baru</button>
+      <button class="secondary" data-goto="riwayat">Lihat Pesanan</button>
+      <button class="secondary" data-goto="riwayat">Buat Invoice</button>
+      <button class="secondary" data-goto="laporan">Laporan Penjualan</button>
+    </div>
+    <div class="card">
+      <h3 style="font-size:15px;">Omzet 14 Hari Terakhir</h3>
+      <div class="chart-bars" id="dashChart"></div>
+    </div>
+    <div class="card" style="margin-top:14px;">
+      <h3 style="font-size:15px;margin-bottom:8px;">Pesanan Terbaru</h3>
+      <div class="tablewrap"><table id="dashRecentTable"></table></div>
+    </div>
+  </section>
+
+  <!-- INPUT PESANAN -->
+  <section class="view" id="view-pesananBaru">
+    <h2>Input Pesanan Baru</h2>
+    <div class="grid grid-2" style="margin-top:14px;align-items:start;">
+      <div class="card">
+        <h3 style="font-size:15px;margin-bottom:10px;">Data Pelanggan</h3>
+        <div class="field"><label>Nomor WhatsApp</label><input type="tel" id="ordWa" placeholder="08xxxxxxxxxx" list="waList"></div>
+        <datalist id="waList"></datalist>
+        <div class="field"><label>Nama Pelanggan</label><input type="text" id="ordNama" placeholder="Nama..."></div>
+        <div class="field"><label>Alamat</label><textarea id="ordAlamat" placeholder="Alamat pengiriman/pengambilan..."></textarea></div>
+        <div class="field"><label>Catatan Pesanan</label><textarea id="ordCatatan" placeholder="Contoh: ambil sore ini..."></textarea></div>
+
+        <h3 style="font-size:15px;margin:16px 0 10px;">Produk Pesanan</h3>
+        <div id="itemRows"></div>
+        <button type="button" class="add-item-btn" id="addItemBtn">+ Tambah Produk</button>
+      </div>
+
+      <div class="card">
+        <h3 style="font-size:15px;margin-bottom:10px;">Ringkasan</h3>
+        <div class="tablewrap"><table id="ordSummaryTable"><thead><tr><th>Produk</th><th>Qty</th><th>Subtotal</th></tr></thead><tbody></tbody></table></div>
+        <div class="totals">
+          <div class="row"><span>Total Pesanan</span><span class="mono" id="ordSubtotal">Rp 0</span></div>
+          <div class="field" style="margin-top:8px;"><label>Diskon Tambahan (Rp)</label><input type="number" id="ordDiskon" value="0" min="0"></div>
+          <div class="field"><label>Biaya Pengiriman (Rp)</label><input type="number" id="ordOngkir" value="0" min="0"></div>
+          <div class="row final"><span>Total Akhir</span><span class="mono" id="ordTotal">Rp 0</span></div>
+        </div>
+        <div class="status-box" id="ordStatusBox"></div>
+        <button class="btn btn-primary" id="ordSubmitBtn" style="width:100%;margin-top:6px;">Simpan Pesanan</button>
+      </div>
+    </div>
+  </section>
+
+  <!-- RIWAYAT PESANAN -->
+  <section class="view" id="view-riwayat">
+    <h2>Riwayat Pesanan</h2>
+    <div class="filters" style="margin-top:14px;">
+      <input type="text" id="filSearch" placeholder="Cari nama / nomor pesanan...">
+      <input type="date" id="filMulai">
+      <input type="date" id="filSelesai">
+      <select id="filStatus"><option value="">Semua Status Pesanan</option><option>Pesanan Baru</option><option>Diproses</option><option>Siap Diambil / Siap Dikirim</option><option>Selesai</option><option>Dibatalkan</option></select>
+      <select id="filBayar"><option value="">Semua Status Bayar</option><option>Belum Dibayar</option><option>Dibayar Sebagian</option><option>Lunas</option></select>
+      <button class="btn btn-outline" id="filApplyBtn">Terapkan</button>
+    </div>
+    <div class="card"><div class="tablewrap"><table id="riwayatTable"></table></div></div>
+  </section>
+
+  <!-- DETAIL PESANAN -->
+  <section class="view" id="view-detail">
+    <button class="back-link" data-goto="riwayat">← Kembali ke Riwayat Pesanan</button>
+    <div id="detailContent"></div>
+  </section>
+
+  <!-- INVOICE -->
+  <section class="view" id="view-invoice">
+    <button class="back-link no-print" data-goto="detail">← Kembali</button>
+    <div class="quickbtns no-print" style="margin-top:0;">
+      <button id="printInvoiceBtn">🖨️ Cetak / Download PDF</button>
+      <button class="secondary btn-wa" id="waInvoiceBtn" style="background:#25D366;color:#fff;">Kirim Invoice via WhatsApp</button>
+    </div>
+    <div id="invoiceContent"></div>
+  </section>
+
+  <!-- PRODUK -->
+  <section class="view" id="view-produk">
+    <h2>Data Produk</h2>
+    <div class="quickbtns"><button id="addProdukBtn">+ Tambah Produk</button></div>
+    <div class="card"><div class="tablewrap"><table id="produkTable"></table></div></div>
+  </section>
+
+  <!-- PELANGGAN -->
+  <section class="view" id="view-pelanggan">
+    <h2>Data Pelanggan</h2>
+    <div class="card" style="margin-top:14px;"><div class="tablewrap"><table id="pelangganTable"></table></div></div>
+  </section>
+
+  <!-- LAPORAN -->
+  <section class="view" id="view-laporan">
+    <h2>Laporan Penjualan</h2>
+    <div class="filters" style="margin-top:14px;">
+      <button class="btn btn-outline" data-preset="hari">Hari Ini</button>
+      <button class="btn btn-outline" data-preset="minggu">Minggu Ini</button>
+      <button class="btn btn-outline" data-preset="bulan">Bulan Ini</button>
+      <input type="date" id="lapMulai">
+      <input type="date" id="lapSelesai">
+      <button class="btn btn-primary" id="lapApplyBtn">Tampilkan</button>
+      <button class="btn btn-outline" id="lapExportBtn">Export Excel (CSV)</button>
+      <button class="btn btn-outline" id="lapPdfBtn">Export PDF</button>
+    </div>
+    <div class="grid grid-4" id="lapStats"></div>
+    <div class="card" style="margin-top:14px;">
+      <h3 style="font-size:15px;">Grafik Omzet Harian</h3>
+      <div class="chart-bars" id="lapChart"></div>
+    </div>
+    <div class="card" style="margin-top:14px;">
+      <h3 style="font-size:15px;margin-bottom:8px;">Produk Terlaris</h3>
+      <div class="tablewrap"><table id="lapProdukTable"></table></div>
+    </div>
+  </section>
+</div>
+
+<!-- MODAL: Ubah Status -->
+<div class="modal-bg" id="modalStatus">
+  <div class="modal">
+    <h3>Ubah Status Pesanan</h3>
+    <div class="field"><label>Status</label>
+      <select id="modalStatusSelect">
+        <option>Pesanan Baru</option><option>Diproses</option><option>Siap Diambil / Siap Dikirim</option><option>Selesai</option><option>Dibatalkan</option>
+      </select>
+    </div>
+    <div class="modal-actions">
+      <button class="btn btn-outline" id="modalStatusCancel">Batal</button>
+      <button class="btn btn-primary" id="modalStatusSave">Simpan</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL: Catat Pembayaran -->
+<div class="modal-bg" id="modalBayar">
+  <div class="modal">
+    <h3>Catat Pembayaran</h3>
+    <div class="field"><label>Jumlah (Rp)</label><input type="number" id="modalBayarJumlah" min="0"></div>
+    <div class="field"><label>Metode</label><select id="modalBayarMetode"><option>Tunai</option><option>Transfer</option><option>QRIS</option><option>Lainnya</option></select></div>
+    <div class="field"><label>Tanggal</label><input type="date" id="modalBayarTanggal"></div>
+    <div class="field"><label>Catatan</label><input type="text" id="modalBayarCatatan"></div>
+    <div class="modal-actions">
+      <button class="btn btn-outline" id="modalBayarCancel">Batal</button>
+      <button class="btn btn-primary" id="modalBayarSave">Simpan</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL: Produk -->
+<div class="modal-bg" id="modalProduk">
+  <div class="modal">
+    <h3 id="modalProdukTitle">Tambah Produk</h3>
+    <input type="hidden" id="modalProdukId">
+    <div class="field"><label>Nama Produk</label><input type="text" id="modalProdukNama"></div>
+    <div class="field"><label>Deskripsi</label><input type="text" id="modalProdukDeskripsi"></div>
+    <div class="field"><label>Tipe</label><select id="modalProdukTipe"><option value="satuan">Satuan (per pcs)</option><option value="paket">Paket</option></select></div>
+    <div class="field"><label>Isi (pcs, untuk paket)</label><input type="number" id="modalProdukIsi" value="1" min="1"></div>
+    <div class="field"><label>Harga Beli (Rp)</label><input type="number" id="modalProdukHargaBeli" min="0" value="0"></div>
+    <div class="field"><label>Harga Jual (Rp)</label><input type="number" id="modalProdukHargaJual" min="0"></div>
+    <div class="field"><label>Status</label><select id="modalProdukStatus"><option value="aktif">Aktif</option><option value="nonaktif">Nonaktif</option></select></div>
+    <div class="modal-actions">
+      <button class="btn btn-outline" id="modalProdukCancel">Batal</button>
+      <button class="btn btn-primary" id="modalProdukSave">Simpan</button>
+    </div>
+  </div>
+</div>
+
+<script>
+/* ================= CONFIG ================= */
+const SCRIPT_URL = 'GANTI_DENGAN_URL_APPS_SCRIPT_KAMU'; // diakhiri /exec
+const BUNDLE_QTY = 6, BUNDLE_HARGA = 10000;
+const NAMA_USAHA = 'Bakpao Ijo Gembul';
+
+let currentUser = null;
+let produkList = [];
+let pelangganList = [];
+let orderItems = []; // { rowId, productId, tipeInput, inputValue, keterangan }
+let currentOrder = null; // { order, items, invoices, payments }
+let riwayatCache = [];
+
+/* ================= HELPERS ================= */
+function rupiah(n){ return 'Rp ' + Math.round(n||0).toLocaleString('id-ID'); }
+function badgeClass(s){ return (s||'').replace(/\s+/g,'_').replace(/\//g,''); }
+function normalizeWa(wa){
+  let s = String(wa||'').replace(/[^0-9]/g,'');
+  if(s.indexOf('0')===0) s = '62'+s.substring(1);
+  return s;
+}
+async function api(action, payload){
+  const body = Object.assign({ action }, payload||{});
+  const res = await fetch(SCRIPT_URL, {
+    method:'POST',
+    headers:{'Content-Type':'text/plain;charset=utf-8'},
+    body: JSON.stringify(body)
+  });
+  return res.json();
+}
+function hitungItemClient(tipeInput, hargaSatuan, inputValue){
+  inputValue = Number(inputValue)||0;
+  if(tipeInput==='paket'){
+    const qty = Math.max(1, Math.round(inputValue));
+    const subtotal = qty*hargaSatuan;
+    return {qty, hargaNormal:subtotal, diskon:0, subtotal};
+  }
+  if(tipeInput==='pcs'){
+    const qty = Math.max(1, Math.round(inputValue));
+    const normal = qty*hargaSatuan;
+    const bundles = Math.floor(qty/BUNDLE_QTY), sisa = qty%BUNDLE_QTY;
+    const bundled = bundles*BUNDLE_HARGA + sisa*hargaSatuan;
+    return {qty, hargaNormal:normal, diskon:normal-bundled, subtotal:bundled};
+  }
+  if(tipeInput==='rp'){
+    const rp = Math.max(0, Math.round(inputValue));
+    const qty = Math.round(rp*BUNDLE_QTY/BUNDLE_HARGA);
+    const normal = qty*hargaSatuan;
+    return {qty, hargaNormal:normal, diskon:normal-rp, subtotal:rp};
+  }
+  return {qty:0,hargaNormal:0,diskon:0,subtotal:0};
+}
+
+/* ================= NAV ================= */
+function switchView(name){
+  document.querySelectorAll('.view').forEach(v=>v.classList.remove('active'));
+  document.getElementById('view-'+name).classList.add('active');
+  document.querySelectorAll('#tabs button').forEach(b=>b.classList.toggle('active', b.dataset.view===name));
+  if(name==='dashboard') loadDashboard();
+  if(name==='pesananBaru') initOrderForm();
+  if(name==='riwayat') loadRiwayat();
+  if(name==='produk') loadProduk();
+  if(name==='pelanggan') loadPelanggan();
+  if(name==='laporan') { setLaporanPreset('bulan'); }
+}
+document.querySelectorAll('#tabs button').forEach(b=>b.addEventListener('click', ()=>switchView(b.dataset.view)));
+document.querySelectorAll('[data-goto]').forEach(b=>b.addEventListener('click', ()=>switchView(b.dataset.goto)));
+
+/* ================= LOGIN ================= */
+document.getElementById('loginBtn').addEventListener('click', doLogin);
+document.getElementById('loginPassword').addEventListener('keydown', e=>{ if(e.key==='Enter') doLogin(); });
+async function doLogin(){
+  const username = document.getElementById('loginUsername').value.trim();
+  const password = document.getElementById('loginPassword').value.trim();
+  const errBox = document.getElementById('loginError');
+  const btn = document.getElementById('loginBtn');
+  errBox.className='login-error';
+  if(!username||!password){ errBox.textContent='Isi username dan password dulu.'; errBox.className='login-error show'; return; }
+  btn.disabled=true; btn.textContent='Memeriksa...';
+  try{
+    const data = await api('login', {username, password});
+    if(data.status==='ok'){
+      currentUser = { nama:data.nama, level:data.level };
+      document.getElementById('userInfo').textContent = currentUser.nama + ' (' + currentUser.level + ')';
+      document.getElementById('loginScreen').style.display='none';
+      document.getElementById('appShell').style.display='block';
+      await loadMasterData();
+      switchView('dashboard');
+    } else {
+      errBox.textContent = data.message || 'Username atau password salah.';
+      errBox.className='login-error show';
+    }
+  }catch(e){
+    errBox.textContent='Gagal terhubung ke server. Cek URL Apps Script.';
+    errBox.className='login-error show';
+  } finally { btn.disabled=false; btn.textContent='Masuk'; }
+}
+document.getElementById('logoutBtn').addEventListener('click', ()=>{
+  currentUser=null;
+  document.getElementById('appShell').style.display='none';
+  document.getElementById('loginScreen').style.display='flex';
+  document.getElementById('loginUsername').value=''; document.getElementById('loginPassword').value='';
+});
+
+/* ================= MASTER DATA ================= */
+async function loadMasterData(){
+  const data = await api('initData', {});
+  if(data.status==='ok'){ produkList = data.produk; pelangganList = data.pelanggan; }
+}
+
+/* ================= DASHBOARD ================= */
+async function loadDashboard(){
+  const d = await api('dashboard', {});
+  if(d.status!=='ok') return;
+  document.getElementById('dashStats').innerHTML = `
+    <div class="card stat"><div class="label">Pesanan Hari Ini</div><div class="value">${d.totalPesananHariIni}</div></div>
+    <div class="card stat"><div class="label">Omzet Hari Ini</div><div class="value mono" style="font-size:19px;">${rupiah(d.omzetHariIni)}</div></div>
+    <div class="card stat"><div class="label">Belum Selesai</div><div class="value">${d.belumSelesai}</div></div>
+    <div class="card stat"><div class="label">Belum Dibayar</div><div class="value">${d.belumDibayar}</div></div>
+  `;
+  const max = Math.max(1, ...d.chart.map(c=>c.omzet));
+  document.getElementById('dashChart').innerHTML = d.chart.map(c=>`<div class="bar" style="height:${Math.max(2,c.omzet/max*100)}%;" title="${rupiah(c.omzet)}"><span class="lbl">${c.tanggal}</span></div>`).join('');
+  const tbody = d.pesananTerbaru.map(o=>`<tr class="clickable" onclick="openDetail('${o.id}')">
+      <td class="mono">${o.nomor_pesanan}</td><td>${o.nama_pelanggan}</td>
+      <td class="mono">${rupiah(o.total)}</td>
+      <td><span class="badge st-${badgeClass(o.status_pesanan)}">${o.status_pesanan}</span></td>
+      <td><span class="badge pay-${badgeClass(o.status_pembayaran)}">${o.status_pembayaran}</span></td>
+    </tr>`).join('');
+  document.getElementById('dashRecentTable').innerHTML = d.pesananTerbaru.length
+    ? `<thead><tr><th>No.</th><th>Pelanggan</th><th>Total</th><th>Status</th><th>Bayar</th></tr></thead><tbody>${tbody}</tbody>`
+    : '<tbody><tr><td class="empty-msg">Belum ada pesanan.</td></tr></tbody>';
+}
+
+/* ================= INPUT PESANAN ================= */
+function initOrderForm(){
+  orderItems = [];
+  document.getElementById('ordWa').value='';
+  document.getElementById('ordNama').value='';
+  document.getElementById('ordAlamat').value='';
+  document.getElementById('ordCatatan').value='';
+  document.getElementById('ordDiskon').value=0;
+  document.getElementById('ordOngkir').value=0;
+  document.getElementById('itemRows').innerHTML='';
+  document.getElementById('waList').innerHTML = pelangganList.map(p=>`<option value="${p.whatsapp}">${p.nama}</option>`).join('');
+  addItemRow();
+  renderOrderSummary();
+  document.getElementById('ordStatusBox').className='status-box';
+}
+document.getElementById('ordWa').addEventListener('change', function(){
+  const found = pelangganList.find(p=>p.whatsapp===this.value);
+  if(found){
+    document.getElementById('ordNama').value = found.nama;
+    document.getElementById('ordAlamat').value = found.alamat||'';
+  }
+});
+let itemRowSeq = 0;
+function addItemRow(){
+  const rowId = 'row'+(itemRowSeq++);
+  orderItems.push({rowId, productId:'', tipeInput:'pcs', inputValue:1, keterangan:''});
+  renderItemRows();
+}
+function renderItemRows(){
+  const wrap = document.getElementById('itemRows');
+  wrap.innerHTML = orderItems.map(it=>{
+    const produk = produkList.find(p=>p.id===it.productId);
+    const isPaket = produk && produk.tipe==='paket';
+    return `<div class="item-row" data-row="${it.rowId}">
+      <div class="row-top">
+        <div class="field"><label>Produk</label>
+          <select onchange="setItemField('${it.rowId}','productId',this.value)">
+            <option value="">Pilih produk...</option>
+            ${produkList.map(p=>`<option value="${p.id}" ${p.id===it.productId?'selected':''}>${p.nama_produk}</option>`).join('')}
+          </select>
+        </div>
+        ${!isPaket ? `<div class="field" style="max-width:110px;"><label>Mode</label>
+          <select onchange="setItemField('${it.rowId}','tipeInput',this.value)">
+            <option value="pcs" ${it.tipeInput==='pcs'?'selected':''}>By Pcs</option>
+            <option value="rp" ${it.tipeInput==='rp'?'selected':''}>By Rp</option>
+          </select></div>` : `<input type="hidden" value="paket">`}
+        <div class="field" style="max-width:130px;"><label>${!isPaket && it.tipeInput==='rp' ? 'Jumlah (Rp)' : (isPaket?'Jumlah Paket':'Jumlah (pcs)')}</label>
+          <input type="number" min="0" value="${it.inputValue}" oninput="setItemField('${it.rowId}','inputValue',this.value)">
+        </div>
+        <button type="button" class="remove-btn" onclick="removeItemRow('${it.rowId}')">Hapus</button>
+      </div>
+      <div class="field" style="margin-top:8px;"><label>Keterangan (mis. mix varian)</label>
+        <input type="text" value="${it.keterangan}" oninput="setItemField('${it.rowId}','keterangan',this.value)" placeholder="Contoh: 3 coklat, 3 stroberi">
+      </div>
+      <div class="subline" id="sub-${it.rowId}"></div>
+    </div>`;
+  }).join('');
+  orderItems.forEach(updateItemSubline);
+  renderOrderSummary();
+}
+function setItemField(rowId, field, value){
+  const it = orderItems.find(i=>i.rowId===rowId);
+  if(!it) return;
+  it[field]=value;
+  if(field==='productId'){
+    const produk = produkList.find(p=>p.id===value);
+    if(produk && produk.tipe==='paket'){ it.tipeInput='paket'; it.inputValue=1; }
+    else if(it.tipeInput==='paket'){ it.tipeInput='pcs'; }
+    renderItemRows();
+    return;
+  }
+  updateItemSubline(it);
+  renderOrderSummary();
+}
+function removeItemRow(rowId){
+  orderItems = orderItems.filter(i=>i.rowId!==rowId);
+  renderItemRows();
+}
+function updateItemSubline(it){
+  const el = document.getElementById('sub-'+it.rowId);
+  if(!el) return;
+  const produk = produkList.find(p=>p.id===it.productId);
+  if(!produk){ el.innerHTML=''; return; }
+  const hasil = hitungItemClient(it.tipeInput, Number(produk.harga_jual), it.inputValue);
+  el.innerHTML = `<span>${hasil.qty} pcs${hasil.diskon>0?' · hemat '+rupiah(hasil.diskon):''}</span><b>${rupiah(hasil.subtotal)}</b>`;
+}
+function getOrderItemResults(){
+  return orderItems.filter(it=>it.productId).map(it=>{
+    const produk = produkList.find(p=>p.id===it.productId);
+    const hasil = hitungItemClient(it.tipeInput, Number(produk.harga_jual), it.inputValue);
+    return Object.assign({produk}, it, hasil);
+  });
+}
+function renderOrderSummary(){
+  const results = getOrderItemResults();
+  const tbody = document.querySelector('#ordSummaryTable tbody');
+  tbody.innerHTML = results.length ? results.map(r=>`<tr><td>${r.produk.nama_produk}</td><td>${r.qty}</td><td class="mono">${rupiah(r.subtotal)}</td></tr>`).join('')
+    : '<tr><td colspan="3" class="empty-msg">Belum ada produk dipilih.</td></tr>';
+  const subtotal = results.reduce((s,r)=>s+r.subtotal,0);
+  const diskon = Number(document.getElementById('ordDiskon').value)||0;
+  const ongkir = Number(document.getElementById('ordOngkir').value)||0;
+  const total = subtotal - diskon + ongkir;
+  document.getElementById('ordSubtotal').textContent = rupiah(subtotal);
+  document.getElementById('ordTotal').textContent = rupiah(total);
+}
+document.getElementById('addItemBtn').addEventListener('click', addItemRow);
+document.getElementById('ordDiskon').addEventListener('input', renderOrderSummary);
+document.getElementById('ordOngkir').addEventListener('input', renderOrderSummary);
+
+document.getElementById('ordSubmitBtn').addEventListener('click', async ()=>{
+  const wa = document.getElementById('ordWa').value.trim();
+  const nama = document.getElementById('ordNama').value.trim();
+  const results = getOrderItemResults();
+  const box = document.getElementById('ordStatusBox');
+  box.className='status-box';
+  if(!wa || !nama){ box.textContent='Nomor WhatsApp dan Nama pelanggan wajib diisi.'; box.className='status-box show err'; return; }
+  if(results.length===0){ box.textContent='Pilih minimal satu produk.'; box.className='status-box show err'; return; }
+  const btn = document.getElementById('ordSubmitBtn');
+  btn.disabled=true; btn.textContent='Menyimpan...';
+  try{
+    const payload = {
+      customer:{ nama, whatsapp:wa, alamat:document.getElementById('ordAlamat').value.trim(), catatan:'' },
+      items: results.map(r=>({ productId:r.productId, tipeInput:r.tipeInput, inputValue:r.inputValue, keterangan:r.keterangan })),
+      diskon:Number(document.getElementById('ordDiskon').value)||0,
+      biayaKirim:Number(document.getElementById('ordOngkir').value)||0,
+      catatan:document.getElementById('ordCatatan').value.trim()
+    };
+    const res = await api('createOrder', payload);
+    if(res.status==='ok'){
+      box.textContent = res.message; box.className='status-box show ok';
+      await loadMasterData();
+      setTimeout(()=>openDetail(res.order.id), 600);
+    } else {
+      box.textContent = res.message; box.className='status-box show err';
+    }
+  }catch(e){ box.textContent='Gagal terhubung ke server.'; box.className='status-box show err'; }
+  finally{ btn.disabled=false; btn.textContent='Simpan Pesanan'; }
+});
+
+/* ================= RIWAYAT PESANAN ================= */
+async function loadRiwayat(){
+  const payload = {
+    search: document.getElementById('filSearch').value.trim(),
+    tanggalMulai: document.getElementById('filMulai').value,
+    tanggalSelesai: document.getElementById('filSelesai').value,
+    statusPesanan: document.getElementById('filStatus').value,
+    statusPembayaran: document.getElementById('filBayar').value
+  };
+  const res = await api('listOrders', payload);
+  if(res.status!=='ok') return;
+  riwayatCache = res.orders;
+  const table = document.getElementById('riwayatTable');
+  if(res.orders.length===0){ table.innerHTML='<tbody><tr><td class="empty-msg">Tidak ada pesanan yang cocok.</td></tr></tbody>'; return; }
+  table.innerHTML = `<thead><tr><th>No. Pesanan</th><th>Tanggal</th><th>Pelanggan</th><th>Total</th><th>Status</th><th>Bayar</th></tr></thead>
+  <tbody>${res.orders.map(o=>`<tr class="clickable" onclick="openDetail('${o.id}')">
+    <td class="mono">${o.nomor_pesanan}</td>
+    <td>${new Date(o.tanggal).toLocaleDateString('id-ID')}</td>
+    <td>${o.nama_pelanggan}</td>
+    <td class="mono">${rupiah(o.total)}</td>
+    <td><span class="badge st-${badgeClass(o.status_pesanan)}">${o.status_pesanan}</span></td>
+    <td><span class="badge pay-${badgeClass(o.status_pembayaran)}">${o.status_pembayaran}</span></td>
+  </tr>`).join('')}</tbody>`;
+}
+document.getElementById('filApplyBtn').addEventListener('click', loadRiwayat);
+
+/* ================= DETAIL PESANAN ================= */
+async function openDetail(orderId){
+  switchViewRaw('detail');
+  document.getElementById('detailContent').innerHTML = '<p class="empty-msg">Memuat...</p>';
+  const res = await api('getOrderDetail', {orderId});
+  if(res.status!=='ok'){ document.getElementById('detailContent').innerHTML = '<p class="empty-msg">'+res.message+'</p>'; return; }
+  currentOrder = res;
+  renderDetail();
+}
+function switchViewRaw(name){
+  document.querySelectorAll('.view').forEach(v=>v.classList.remove('active'));
+  document.getElementById('view-'+name).classList.add('active');
+  document.querySelectorAll('#tabs button').forEach(b=>b.classList.remove('active'));
+}
+function renderDetail(){
+  const {order, items, invoices} = currentOrder;
+  const hasInvoice = invoices && invoices.length>0;
+  document.getElementById('detailContent').innerHTML = `
+    <div class="card">
+      <div style="display:flex;justify-content:space-between;flex-wrap:wrap;gap:10px;">
+        <div>
+          <h2>${order.nomor_pesanan}</h2>
+          <p style="color:var(--ink-soft);font-size:13px;margin-top:4px;">${new Date(order.tanggal).toLocaleString('id-ID')}</p>
+        </div>
+        <div style="text-align:right;">
+          <span class="badge st-${badgeClass(order.status_pesanan)}">${order.status_pesanan}</span>
+          <span class="badge pay-${badgeClass(order.status_pembayaran)}">${order.status_pembayaran}</span>
+        </div>
+      </div>
+      <h3 style="font-size:14px;margin:16px 0 6px;">Pelanggan</h3>
+      <p style="font-size:14px;margin:0;">${order.nama_pelanggan} · ${order.whatsapp}<br>${order.alamat||'-'}</p>
+
+      <h3 style="font-size:14px;margin:16px 0 6px;">Detail Produk</h3>
+      <div class="tablewrap"><table><thead><tr><th>Produk</th><th>Qty</th><th>Subtotal</th></tr></thead>
+      <tbody>${items.map(it=>`<tr><td>${it.nama_produk}${it.keterangan?'<br><span style="color:var(--ink-soft);font-size:12px;">'+it.keterangan+'</span>':''}</td><td>${it.qty}</td><td class="mono">${rupiah(it.subtotal)}</td></tr>`).join('')}</tbody></table></div>
+
+      <div class="totals">
+        <div class="row"><span>Total Pesanan</span><span class="mono">${rupiah(order.subtotal)}</span></div>
+        <div class="row"><span>Diskon</span><span class="mono">-${rupiah(order.diskon)}</span></div>
+        <div class="row"><span>Biaya Pengiriman</span><span class="mono">${rupiah(order.biaya_kirim)}</span></div>
+        <div class="row final"><span>Total Akhir</span><span class="mono">${rupiah(order.total)}</span></div>
+        <div class="row" style="margin-top:8px;"><span>Sudah Dibayar</span><span class="mono">${rupiah(order.jumlah_dibayar)}</span></div>
+        <div class="row"><span>Sisa Tagihan</span><span class="mono">${rupiah(order.sisa_tagihan)}</span></div>
+      </div>
+      ${order.catatan ? `<p style="font-size:13px;color:var(--ink-soft);margin-top:10px;"><b>Catatan:</b> ${order.catatan}</p>` : ''}
+
+      <div class="quickbtns">
+        <button class="btn btn-outline" onclick="openStatusModal()">Ubah Status</button>
+        <button class="btn btn-outline" onclick="openBayarModal()">Catat Pembayaran</button>
+        ${hasInvoice ? `<button class="btn btn-primary" onclick="viewInvoice()">Lihat Invoice</button>` : `<button class="btn btn-primary" onclick="buatInvoice()">Buat Invoice</button>`}
+        <button class="btn btn-wa" onclick="kirimWaPesanan()">Kirim Info Pesanan via WhatsApp</button>
+      </div>
+    </div>`;
+}
+
+function openStatusModal(){
+  document.getElementById('modalStatusSelect').value = currentOrder.order.status_pesanan;
+  document.getElementById('modalStatus').classList.add('show');
+}
+document.getElementById('modalStatusCancel').addEventListener('click', ()=>document.getElementById('modalStatus').classList.remove('show'));
+document.getElementById('modalStatusSave').addEventListener('click', async ()=>{
+  const status = document.getElementById('modalStatusSelect').value;
+  await api('updateOrderStatus', {orderId:currentOrder.order.id, status});
+  document.getElementById('modalStatus').classList.remove('show');
+  openDetail(currentOrder.order.id);
+});
+
+function openBayarModal(){
+  document.getElementById('modalBayarJumlah').value = currentOrder.order.sisa_tagihan;
+  document.getElementById('modalBayarTanggal').value = new Date().toISOString().slice(0,10);
+  document.getElementById('modalBayarCatatan').value='';
+  document.getElementById('modalBayar').classList.add('show');
+}
+document.getElementById('modalBayarCancel').addEventListener('click', ()=>document.getElementById('modalBayar').classList.remove('show'));
+document.getElementById('modalBayarSave').addEventListener('click', async ()=>{
+  const payload = {
+    orderId: currentOrder.order.id,
+    jumlah: Number(document.getElementById('modalBayarJumlah').value)||0,
+    metode: document.getElementById('modalBayarMetode').value,
+    tanggal: document.getElementById('modalBayarTanggal').value,
+    catatan: document.getElementById('modalBayarCatatan').value
+  };
+  await api('addPayment', payload);
+  document.getElementById('modalBayar').classList.remove('show');
+  openDetail(currentOrder.order.id);
+});
+
+async function buatInvoice(){
+  const res = await api('createInvoice', {orderId: currentOrder.order.id});
+  if(res.status==='ok'){ await openDetail(currentOrder.order.id); viewInvoice(); }
+  else alert(res.message);
+}
+function viewInvoice(){
+  const {order, items, invoices} = currentOrder;
+  const inv = invoices[0];
+  switchViewRaw('invoice');
+  document.getElementById('invoiceContent').innerHTML = `
+    <div class="invoice-box">
+      <div class="invoice-head">
+        <div class="biz">
+          <div style="font-size:32px;">🥟</div>
+          <div><h2>${NAMA_USAHA}</h2><p style="color:var(--ink-soft);font-size:12.5px;margin:2px 0 0;">Invoice Pesanan</p></div>
+        </div>
+        <div class="meta">
+          <div>No. Invoice</div><b>${inv.nomor_invoice}</b>
+          <div style="margin-top:6px;">${new Date(inv.tanggal_invoice).toLocaleDateString('id-ID')}</div>
+        </div>
+      </div>
+      <p style="font-size:13.5px;"><b>Kepada:</b> ${order.nama_pelanggan}<br>${order.whatsapp}<br>${order.alamat||''}</p>
+      <div class="tablewrap"><table><thead><tr><th>Produk</th><th>Harga</th><th>Qty</th><th>Subtotal</th></tr></thead>
+      <tbody>${items.map(it=>`<tr><td>${it.nama_produk}</td><td class="mono">${rupiah(it.harga_satuan)}</td><td>${it.qty}</td><td class="mono">${rupiah(it.subtotal)}</td></tr>`).join('')}</tbody></table></div>
+      <div class="totals">
+        <div class="row"><span>Subtotal</span><span class="mono">${rupiah(order.subtotal)}</span></div>
+        <div class="row"><span>Diskon</span><span class="mono">-${rupiah(order.diskon)}</span></div>
+        <div class="row"><span>Biaya Pengiriman</span><span class="mono">${rupiah(order.biaya_kirim)}</span></div>
+        <div class="row final"><span>Total Pembayaran</span><span class="mono">${rupiah(inv.total_tagihan)}</span></div>
+      </div>
+      <p style="font-size:13px;margin-top:10px;"><b>Status Pembayaran:</b> <span class="badge pay-${badgeClass(order.status_pembayaran)}">${order.status_pembayaran}</span></p>
+      ${order.catatan ? `<p style="font-size:13px;color:var(--ink-soft);"><b>Catatan:</b> ${order.catatan}</p>` : ''}
+      <div class="thankyou">Terima kasih telah memesan Bakpao Ijo Gembul 🙏</div>
+    </div>`;
+}
+document.getElementById('printInvoiceBtn').addEventListener('click', ()=>window.print());
+document.getElementById('waInvoiceBtn').addEventListener('click', ()=>{
+  const {order, invoices} = currentOrder;
+  const inv = invoices[0];
+  const msg = `Halo ${order.nama_pelanggan},\nInvoice pesanan Anda sudah kami buat.\n\nNomor Invoice: ${inv.nomor_invoice}\nTotal Tagihan: ${rupiah(inv.total_tagihan)}\nStatus Pembayaran: ${order.status_pembayaran}\n\nTerima kasih telah memesan Bakpao Ijo Gembul.`;
+  window.open(`https://wa.me/${normalizeWa(order.whatsapp)}?text=${encodeURIComponent(msg)}`, '_blank');
+});
+function kirimWaPesanan(){
+  const {order, items} = currentOrder;
+  const daftar = items.map(it=>`- ${it.nama_produk} x${it.qty}`).join('\n');
+  const msg = `Halo ${order.nama_pelanggan},\nPesanan Anda di Bakpao Ijo Gembul sudah kami terima.\nNomor Pesanan: ${order.nomor_pesanan}\n\nDetail Pesanan:\n${daftar}\n\nTotal Pesanan: ${rupiah(order.total)}\nStatus Pesanan: ${order.status_pesanan}\nTerima kasih telah memesan Bakpao Ijo Gembul.`;
+  window.open(`https://wa.me/${normalizeWa(order.whatsapp)}?text=${encodeURIComponent(msg)}`, '_blank');
+}
+
+/* ================= PRODUK ================= */
+async function loadProduk(){
+  const res = await api('listProducts', {});
+  produkList = res.produk || produkList;
+  const table = document.getElementById('produkTable');
+  table.innerHTML = `<thead><tr><th>Nama</th><th>Tipe</th><th>Isi</th><th>Harga Jual</th><th>Status</th><th></th></tr></thead>
+  <tbody>${res.produk.map(p=>`<tr>
+    <td>${p.nama_produk}<br><span style="color:var(--ink-soft);font-size:12px;">${p.deskripsi||''}</span></td>
+    <td>${p.tipe}</td><td>${p.isi_pcs}</td><td class="mono">${rupiah(p.harga_jual)}</td>
+    <td><span class="badge ${p.status==='aktif'?'pay-Lunas':'pay-Belum_Dibayar'}">${p.status}</span></td>
+    <td><button class="btn btn-outline" onclick='editProduk(${JSON.stringify(p).replace(/'/g,"&apos;")})'>Edit</button></td>
+  </tr>`).join('')}</tbody>`;
+}
+document.getElementById('addProdukBtn').addEventListener('click', ()=>openProdukModal());
+function editProduk(p){ openProdukModal(p); }
+function openProdukModal(p){
+  document.getElementById('modalProdukTitle').textContent = p ? 'Edit Produk' : 'Tambah Produk';
+  document.getElementById('modalProdukId').value = p ? p.id : '';
+  document.getElementById('modalProdukNama').value = p ? p.nama_produk : '';
+  document.getElementById('modalProdukDeskripsi').value = p ? p.deskripsi : '';
+  document.getElementById('modalProdukTipe').value = p ? p.tipe : 'satuan';
+  document.getElementById('modalProdukIsi').value = p ? p.isi_pcs : 1;
+  document.getElementById('modalProdukHargaBeli').value = p ? p.harga_beli : 0;
+  document.getElementById('modalProdukHargaJual').value = p ? p.harga_jual : '';
+  document.getElementById('modalProdukStatus').value = p ? p.status : 'aktif';
+  document.getElementById('modalProduk').classList.add('show');
+}
+document.getElementById('modalProdukCancel').addEventListener('click', ()=>document.getElementById('modalProduk').classList.remove('show'));
+document.getElementById('modalProdukSave').addEventListener('click', async ()=>{
+  const id = document.getElementById('modalProdukId').value;
+  const produk = {
+    id: id || undefined,
+    nama_produk: document.getElementById('modalProdukNama').value.trim(),
+    deskripsi: document.getElementById('modalProdukDeskripsi').value.trim(),
+    tipe: document.getElementById('modalProdukTipe').value,
+    isi_pcs: Number(document.getElementById('modalProdukIsi').value)||1,
+    harga_beli: Number(document.getElementById('modalProdukHargaBeli').value)||0,
+    harga_jual: Number(document.getElementById('modalProdukHargaJual').value)||0,
+    status: document.getElementById('modalProdukStatus').value
+  };
+  await api('saveProduct', {produk});
+  document.getElementById('modalProduk').classList.remove('show');
+  await loadMasterData();
+  loadProduk();
+});
+
+/* ================= PELANGGAN ================= */
+async function loadPelanggan(){
+  const res = await api('listCustomers', {});
+  const table = document.getElementById('pelangganTable');
+  if(!res.pelanggan || res.pelanggan.length===0){ table.innerHTML='<tbody><tr><td class="empty-msg">Belum ada pelanggan.</td></tr></tbody>'; return; }
+  table.innerHTML = `<thead><tr><th>Nama</th><th>WhatsApp</th><th>Total Pesanan</th><th>Total Transaksi</th><th>Terakhir Pesan</th></tr></thead>
+  <tbody>${res.pelanggan.map(c=>`<tr class="clickable" onclick="searchByCustomer('${c.nama.replace(/'/g,"")}')">
+    <td>${c.nama}</td><td>${c.whatsapp}</td><td>${c.total_pesanan}</td>
+    <td class="mono">${rupiah(c.total_transaksi)}</td>
+    <td>${c.tanggal_terakhir ? new Date(c.tanggal_terakhir).toLocaleDateString('id-ID') : '-'}</td>
+  </tr>`).join('')}</tbody>`;
+}
+function searchByCustomer(nama){
+  switchView('riwayat');
+  document.getElementById('filSearch').value = nama;
+  loadRiwayat();
+}
+
+/* ================= LAPORAN ================= */
+function setLaporanPreset(preset){
+  const today = new Date();
+  let start = new Date(today);
+  if(preset==='hari'){ /* start = today */ }
+  else if(preset==='minggu'){ start.setDate(today.getDate() - today.getDay()); }
+  else if(preset==='bulan'){ start = new Date(today.getFullYear(), today.getMonth(), 1); }
+  document.getElementById('lapMulai').value = start.toISOString().slice(0,10);
+  document.getElementById('lapSelesai').value = today.toISOString().slice(0,10);
+  loadLaporan();
+}
+document.querySelectorAll('[data-preset]').forEach(b=>b.addEventListener('click', ()=>setLaporanPreset(b.dataset.preset)));
+document.getElementById('lapApplyBtn').addEventListener('click', loadLaporan);
+let lastReport = null;
+async function loadLaporan(){
+  const payload = { tanggalMulai: document.getElementById('lapMulai').value, tanggalSelesai: document.getElementById('lapSelesai').value };
+  const res = await api('getReport', payload);
+  if(res.status!=='ok') return;
+  lastReport = res;
+  document.getElementById('lapStats').innerHTML = `
+    <div class="card stat"><div class="label">Total Pesanan</div><div class="value">${res.totalPesanan}</div></div>
+    <div class="card stat"><div class="label">Produk Terjual</div><div class="value">${res.totalProdukTerjual}</div></div>
+    <div class="card stat"><div class="label">Total Omzet</div><div class="value mono" style="font-size:18px;">${rupiah(res.totalOmzet)}</div></div>
+    <div class="card stat"><div class="label">Piutang</div><div class="value mono" style="font-size:18px;">${rupiah(res.totalPiutang)}</div></div>
+  `;
+  const max = Math.max(1, ...res.grafikHarian.map(c=>c.omzet));
+  document.getElementById('lapChart').innerHTML = res.grafikHarian.length ? res.grafikHarian.map(c=>`<div class="bar" style="height:${Math.max(2,c.omzet/max*100)}%;" title="${rupiah(c.omzet)}"><span class="lbl">${c.tanggal.slice(8,10)}/${c.tanggal.slice(5,7)}</span></div>`).join('') : '<p class="empty-msg">Tidak ada data.</p>';
+  document.getElementById('lapProdukTable').innerHTML = `<thead><tr><th>Produk</th><th>Terjual (pcs)</th></tr></thead>
+    <tbody>${res.produkTerlaris.map(p=>`<tr><td>${p.nama}</td><td>${p.qty}</td></tr>`).join('') || '<tr><td colspan="2" class="empty-msg">Tidak ada data.</td></tr>'}</tbody>`;
+}
+document.getElementById('lapExportBtn').addEventListener('click', ()=>{
+  if(!lastReport) return;
+  let csv = 'Nomor Pesanan,Tanggal,Pelanggan,Total,Status Pesanan,Status Pembayaran\n';
+  lastReport.orders.forEach(o=>{
+    csv += `${o.nomor_pesanan},${new Date(o.tanggal).toLocaleDateString('id-ID')},${o.nama_pelanggan},${o.total},${o.status_pesanan},${o.status_pembayaran}\n`;
+  });
+  const blob = new Blob([csv], {type:'text/csv;charset=utf-8;'});
+  const link = document.createElement('a');
+  link.href = URL.createObjectURL(blob);
+  link.download = 'laporan-penjualan-'+document.getElementById('lapMulai').value+'_sd_'+document.getElementById('lapSelesai').value+'.csv';
+  link.click();
+});
+document.getElementById('lapPdfBtn').addEventListener('click', ()=>window.print());
+</script>
+</body>
+</html>
