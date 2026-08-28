@@ -188,10 +188,67 @@
   .status.show{display:block;}
   .status.ok{background:rgba(69,99,63,0.12);color:var(--leaf);}
   .status.err{background:rgba(193,68,14,0.10);color:var(--vermillion-dark);}
+
+  /* login screen */
+  #loginScreen{
+    min-height:100vh;display:flex;align-items:center;justify-content:center;
+  }
+  .login-card{
+    background:var(--paper);border:1px solid var(--line);border-radius:18px;
+    padding:32px 28px;width:100%;max-width:340px;
+    box-shadow:0 6px 24px rgba(74,51,31,0.10);
+  }
+  .login-card h1{
+    font-family:'Fredoka',sans-serif;font-size:22px;color:var(--bamboo-dark);margin:8px 0 4px;text-align:center;
+  }
+  .login-card p{color:var(--ink-soft);font-size:13.5px;text-align:center;margin:0 0 20px;}
+  .login-card label{font-size:12.5px;font-weight:600;color:var(--ink-soft);text-transform:uppercase;letter-spacing:.03em;}
+  .login-card input{
+    width:100%;padding:10px 12px;margin:6px 0 14px;border-radius:10px;border:1px solid var(--line);
+    background:var(--cream);font-family:'Plus Jakarta Sans',sans-serif;font-size:14px;color:var(--ink);outline:none;
+  }
+  .login-card input:focus{border-color:var(--bamboo);}
+  .login-card button{
+    width:100%;background:var(--vermillion);color:#fff;border:none;border-radius:12px;
+    padding:12px;font-family:'Fredoka',sans-serif;font-weight:600;font-size:15px;cursor:pointer;
+  }
+  .login-card button:disabled{opacity:.55;cursor:not-allowed;}
+  .login-error{
+    background:rgba(193,68,14,0.10);color:var(--vermillion-dark);font-size:13px;
+    padding:9px 11px;border-radius:10px;margin-bottom:12px;display:none;
+  }
+  .login-error.show{display:block;}
+  #appWrap{display:none;}
+  .topbar{
+    display:flex;justify-content:flex-end;align-items:center;gap:10px;
+    max-width:1080px;margin:0 auto 6px;font-size:13px;color:var(--ink-soft);
+  }
+  .topbar button{
+    background:transparent;border:1px solid var(--line);border-radius:8px;
+    padding:5px 10px;font-family:'Plus Jakarta Sans',sans-serif;font-size:12.5px;color:var(--bamboo-dark);cursor:pointer;
+  }
 </style>
 </head>
 <body>
+<div id="loginScreen">
+  <div class="login-card">
+    <h1>Masuk</h1>
+    <p>Kalkulator Pesanan Bakpao</p>
+    <div class="login-error" id="loginError"></div>
+    <label>Username</label>
+    <input type="text" id="loginUsername" placeholder="username">
+    <label>Password</label>
+    <input type="password" id="loginPassword" placeholder="••••••••">
+    <button id="loginBtn">Masuk</button>
+  </div>
+</div>
+
+<div id="appWrap">
 <div class="wrap">
+  <div class="topbar">
+    <span id="userInfo"></span>
+    <button id="logoutBtn">Keluar</button>
+  </div>
   <header>
     <svg class="steamer-icon" width="52" height="52" viewBox="0 0 52 52" fill="none">
       <ellipse cx="26" cy="42" rx="20" ry="6" fill="var(--bamboo)" opacity="0.25"/>
@@ -249,6 +306,7 @@
       <button class="send-btn" id="sendBtn">Kirim Pesanan</button>
     </div>
   </main>
+</div>
 </div>
 
 <script>
@@ -357,7 +415,7 @@ document.getElementById('sendBtn').addEventListener('click', async () => {
   if(!nama || !noHp){ showStatus('Nama dan No. HP wajib diisi.', false); return; }
 
   const total = items.reduce((s,it)=>s+it.subtotal,0);
-  const payload = { namaPembeli: nama, noHp, catatan, items, total, waktu: new Date().toISOString() };
+  const payload = { action: 'order', namaPembeli: nama, noHp, catatan, items, total, waktu: new Date().toISOString() };
 
   btn.disabled = true; btn.textContent = 'Mengirim...';
   try{
@@ -385,6 +443,58 @@ function showStatus(msg, ok){
   box.textContent = msg;
   box.className = 'status show ' + (ok ? 'ok' : 'err');
 }
+
+// ==== Login ====
+let currentUser = null; // { nama, level } — disimpan di memori saja, hilang saat halaman di-refresh
+
+document.getElementById('loginBtn').addEventListener('click', doLogin);
+document.getElementById('loginPassword').addEventListener('keydown', (e) => { if(e.key === 'Enter') doLogin(); });
+
+async function doLogin(){
+  const username = document.getElementById('loginUsername').value.trim();
+  const password = document.getElementById('loginPassword').value.trim();
+  const errBox = document.getElementById('loginError');
+  const btn = document.getElementById('loginBtn');
+  errBox.className = 'login-error';
+
+  if(!username || !password){
+    errBox.textContent = 'Isi username dan password dulu.';
+    errBox.className = 'login-error show';
+    return;
+  }
+
+  btn.disabled = true; btn.textContent = 'Memeriksa...';
+  try{
+    const res = await fetch(SCRIPT_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+      body: JSON.stringify({ action: 'login', username, password })
+    });
+    const data = await res.json();
+    if(data.status === 'ok'){
+      currentUser = { nama: data.nama, level: data.level };
+      document.getElementById('userInfo').textContent = currentUser.nama + ' (' + currentUser.level + ')';
+      document.getElementById('loginScreen').style.display = 'none';
+      document.getElementById('appWrap').style.display = 'block';
+    } else {
+      errBox.textContent = data.message || 'Username atau password salah.';
+      errBox.className = 'login-error show';
+    }
+  } catch(e){
+    errBox.textContent = 'Gagal terhubung ke server. Coba lagi.';
+    errBox.className = 'login-error show';
+  } finally {
+    btn.disabled = false; btn.textContent = 'Masuk';
+  }
+}
+
+document.getElementById('logoutBtn').addEventListener('click', () => {
+  currentUser = null;
+  document.getElementById('loginScreen').style.display = 'flex';
+  document.getElementById('appWrap').style.display = 'none';
+  document.getElementById('loginUsername').value = '';
+  document.getElementById('loginPassword').value = '';
+});
 
 renderMenu();
 renderTicket();
