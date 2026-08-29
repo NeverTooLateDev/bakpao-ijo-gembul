@@ -357,6 +357,7 @@ tr.clickable:hover{background:var(--green-light);}
   <div class="modal">
     <h3 id="modalProdukTitle">Tambah Produk</h3>
     <input type="hidden" id="modalProdukId">
+    <div class="field" id="skuField"><label>ID / SKU Produk</label><input type="text" id="modalProdukSku" placeholder="Contoh: COK-01"></div>
     <div class="field"><label>Nama Produk</label><input type="text" id="modalProdukNama"></div>
     <div class="field"><label>Deskripsi</label><input type="text" id="modalProdukDeskripsi"></div>
     <div class="field"><label>Tipe</label><select id="modalProdukTipe"><option value="satuan">Satuan (per pcs)</option><option value="paket">Paket</option></select></div>
@@ -392,7 +393,7 @@ tr.clickable:hover{background:var(--green-light);}
    ⚙️ EDIT DI SINI SAJA — baris paling atas file ini.
    Ganti dengan URL Web App Apps Script kamu (diakhiri /exec).
    ============================================================ */
-const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbwiasITx_iUykSxXTrVM0HU5SLo9UzXYhBTYPhdwtbVGwS9a9cSghJCwlT0447TUVsGWQ/exec';
+const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbwWJjstVd6T2jLhCH6i9pifPuaSFyVyVlkTaG44onIczsNOAwB8PynqR5Wku0LD96AyuQ/exec';
 const BUNDLE_QTY = 6, BUNDLE_HARGA = 10000;
 const NAMA_USAHA = 'Bakpao Ijo Gembul';
 
@@ -937,8 +938,9 @@ async function loadProduk(){
   const res = await api('listProducts', {});
   produkList = res.produk || produkList;
   const table = document.getElementById('produkTable');
-  table.innerHTML = `<thead><tr><th>Nama</th><th>Tipe</th><th>Isi</th><th>Harga Jual</th><th>Status</th><th></th></tr></thead>
+  table.innerHTML = `<thead><tr><th>SKU</th><th>Nama</th><th>Tipe</th><th>Isi</th><th>Harga Jual</th><th>Status</th><th></th></tr></thead>
   <tbody>${res.produk.map(p=>`<tr>
+    <td class="mono">${p.id}</td>
     <td>${p.nama_produk}<br><span style="color:var(--ink-soft);font-size:12px;">${p.deskripsi||''}</span></td>
     <td>${p.tipe}</td><td>${p.isi_pcs}</td><td class="mono">${rupiah(p.harga_jual)}</td>
     <td><span class="badge ${p.status==='aktif'?'pay-Lunas':'pay-Belum_Dibayar'}">${p.status}</span></td>
@@ -950,6 +952,9 @@ function editProduk(p){ openProdukModal(p); }
 function openProdukModal(p){
   document.getElementById('modalProdukTitle').textContent = p ? 'Edit Produk' : 'Tambah Produk';
   document.getElementById('modalProdukId').value = p ? p.id : '';
+  document.getElementById('modalProdukSku').value = p ? p.id : '';
+  document.getElementById('modalProdukSku').disabled = !!p;
+  document.getElementById('skuField').style.opacity = p ? '0.6' : '1';
   document.getElementById('modalProdukNama').value = p ? p.nama_produk : '';
   document.getElementById('modalProdukDeskripsi').value = p ? p.deskripsi : '';
   document.getElementById('modalProdukTipe').value = p ? p.tipe : 'satuan';
@@ -964,6 +969,7 @@ document.getElementById('modalProdukSave').addEventListener('click', async ()=>{
   const id = document.getElementById('modalProdukId').value;
   const produk = {
     id: id || undefined,
+    sku: id ? undefined : document.getElementById('modalProdukSku').value.trim().toUpperCase(),
     nama_produk: document.getElementById('modalProdukNama').value.trim(),
     deskripsi: document.getElementById('modalProdukDeskripsi').value.trim(),
     tipe: document.getElementById('modalProdukTipe').value,
@@ -972,7 +978,8 @@ document.getElementById('modalProdukSave').addEventListener('click', async ()=>{
     harga_jual: Number(document.getElementById('modalProdukHargaJual').value)||0,
     status: document.getElementById('modalProdukStatus').value
   };
-  await api('saveProduct', {produk});
+  const res = await api('saveProduct', {produk});
+  if(res.status!=='ok'){ alert(res.message); return; }
   document.getElementById('modalProduk').classList.remove('show');
   await loadMasterData();
   loadProduk();
