@@ -159,7 +159,7 @@ tr.clickable:hover{background:var(--green-light);}
 
 <div id="loginScreen">
   <div class="login-card">
-    <h1>🥟 Bakpao Ijo Gembul</h1>
+    <h1>🤗 Bakpao Ijo Gembul</h1>
     <p>Sistem Pencatatan Penjualan</p>
     <div class="login-error" id="loginError"></div>
     <label>Username</label>
@@ -172,7 +172,7 @@ tr.clickable:hover{background:var(--green-light);}
 
 <div id="appShell">
   <div class="topbar no-print">
-    <div class="brand">🥟 Bakpao Ijo Gembul</div>
+    <div class="brand">🤗 Bakpao Ijo Gembul</div>
     <span class="userinfo" id="userInfo"></span>
     <button class="logout" id="logoutBtn">Keluar</button>
   </div>
@@ -180,9 +180,9 @@ tr.clickable:hover{background:var(--green-light);}
     <button data-view="dashboard" class="active">Dashboard</button>
     <button data-view="pesananBaru">Input Pesanan</button>
     <button data-view="riwayat">Riwayat Pesanan</button>
-    <button data-view="produk">Produk</button>
+    <button data-view="produk" class="admin-only">Produk</button>
     <button data-view="pelanggan">Pelanggan</button>
-    <button data-view="laporan">Laporan</button>
+    <button data-view="laporan" class="admin-only">Laporan</button>
   </div>
 
   <!-- DASHBOARD -->
@@ -193,7 +193,7 @@ tr.clickable:hover{background:var(--green-light);}
       <button data-goto="pesananBaru">+ Input Pesanan Baru</button>
       <button class="secondary" data-goto="riwayat">Lihat Pesanan</button>
       <button class="secondary" data-goto="riwayat">Buat Invoice</button>
-      <button class="secondary" data-goto="laporan">Laporan Penjualan</button>
+      <button class="secondary admin-only" data-goto="laporan">Laporan Penjualan</button>
     </div>
     <div class="card">
       <h3 style="font-size:15px;">Omzet 14 Hari Terakhir</h3>
@@ -207,7 +207,11 @@ tr.clickable:hover{background:var(--green-light);}
 
   <!-- INPUT PESANAN -->
   <section class="view" id="view-pesananBaru">
-    <h2>Input Pesanan Baru</h2>
+    <h2 id="pesananBaruTitle">Input Pesanan Baru</h2>
+    <div id="editModeBanner" style="display:none;margin-top:12px;padding:10px 14px;background:var(--amber-bg);border-radius:10px;font-size:13.5px;font-weight:600;color:var(--amber);align-items:center;justify-content:space-between;gap:10px;">
+      <span id="editModeText"></span>
+      <button class="btn btn-outline" id="cancelEditBtn" style="background:#fff;">Batal Edit</button>
+    </div>
     <div class="grid grid-2" style="margin-top:14px;align-items:start;">
       <div class="card">
         <h3 style="font-size:15px;margin-bottom:10px;">Data Pelanggan</h3>
@@ -388,7 +392,7 @@ tr.clickable:hover{background:var(--green-light);}
    ⚙️ EDIT DI SINI SAJA — baris paling atas file ini.
    Ganti dengan URL Web App Apps Script kamu (diakhiri /exec).
    ============================================================ */
-const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbxmbOl4DcVSvFC03K1h7oXwmI1rSmt6MqQFmYRl_eGFkYPoxPSEQS5PBSYswiBzFI_Syg/exec';
+const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbwWJjstVd6T2jLhCH6i9pifPuaSFyVyVlkTaG44onIczsNOAwB8PynqR5Wku0LD96AyuQ/exec';
 const BUNDLE_QTY = 6, BUNDLE_HARGA = 10000;
 const NAMA_USAHA = 'Bakpao Ijo Gembul';
 
@@ -408,11 +412,13 @@ function normalizeWa(wa){
   if(s.indexOf('0')===0) return '62'+s.substring(1);
   return '62'+s;
 }
-function formatHariTanggal(dateStr){
-  if(!dateStr) return '-';
-  const d = new Date(dateStr);
+const HARI_ID = ['Minggu','Senin','Selasa','Rabu','Kamis','Jumat','Sabtu'];
+const BULAN_ID = ['Januari','Februari','Maret','April','Mei','Juni','Juli','Agustus','September','Oktober','November','Desember'];
+function formatHariTanggal(dateInput){
+  if(!dateInput) return '-';
+  const d = new Date(dateInput);
   if(isNaN(d.getTime())) return '-';
-  return d.toLocaleDateString('id-ID', {weekday:'long', day:'numeric', month:'long', year:'numeric'});
+  return HARI_ID[d.getDay()] + ', ' + d.getDate() + ' ' + BULAN_ID[d.getMonth()] + ' ' + d.getFullYear();
 }
 async function api(action, payload){
   const body = Object.assign({ action }, payload||{});
@@ -422,6 +428,16 @@ async function api(action, payload){
     body: JSON.stringify(body)
   });
   return res.json();
+}
+function isAdmin(){ return currentUser && String(currentUser.level).toLowerCase().trim()==='admin'; }
+function canEditOrder(){
+  const lvl = currentUser ? String(currentUser.level).toLowerCase().trim() : '';
+  return lvl==='admin' || lvl==='sales';
+}
+function applyRolePermissions(){
+  document.querySelectorAll('.admin-only').forEach(el=>{
+    el.style.display = isAdmin() ? '' : 'none';
+  });
 }
 function hitungItemClient(tipeInput, hargaSatuan, inputValue){
   inputValue = Number(inputValue)||0;
@@ -448,6 +464,7 @@ function hitungItemClient(tipeInput, hargaSatuan, inputValue){
 
 /* ================= NAV ================= */
 function switchView(name){
+  if((name==='produk' || name==='laporan') && !isAdmin()){ name='dashboard'; }
   document.querySelectorAll('.view').forEach(v=>v.classList.remove('active'));
   document.getElementById('view-'+name).classList.add('active');
   document.querySelectorAll('#tabs button').forEach(b=>b.classList.toggle('active', b.dataset.view===name));
@@ -458,7 +475,10 @@ function switchView(name){
   if(name==='pelanggan') loadPelanggan();
   if(name==='laporan') { setLaporanPreset('bulan'); }
 }
-document.querySelectorAll('#tabs button').forEach(b=>b.addEventListener('click', ()=>switchView(b.dataset.view)));
+document.querySelectorAll('#tabs button').forEach(b=>b.addEventListener('click', ()=>{
+  if(b.dataset.view==='pesananBaru'){ editingOrderId=null; editingOrderData=null; }
+  switchView(b.dataset.view);
+}));
 document.querySelectorAll('[data-goto]').forEach(b=>b.addEventListener('click', ()=>switchView(b.dataset.goto)));
 
 /* ================= LOGIN ================= */
@@ -479,6 +499,7 @@ async function doLogin(){
       document.getElementById('userInfo').textContent = currentUser.nama + ' (' + currentUser.level + ')';
       document.getElementById('loginScreen').style.display='none';
       document.getElementById('appShell').style.display='block';
+      applyRolePermissions();
       await loadMasterData();
       switchView('dashboard');
     } else {
@@ -527,24 +548,54 @@ async function loadDashboard(){
 }
 
 /* ================= INPUT PESANAN ================= */
+let editingOrderId = null;
+let editingOrderData = null;
 function initOrderForm(){
   orderItems = [];
-  document.getElementById('ordWa').value='';
-  document.getElementById('ordNama').value='';
-  document.getElementById('ordAlamat').value='';
-  document.getElementById('ordCatatan').value='';
-  document.getElementById('ordDiskon').value=0;
-  document.getElementById('ordOngkir').value=0;
   document.getElementById('itemRows').innerHTML='';
-  const besok = new Date(); besok.setDate(besok.getDate()+1);
-  document.getElementById('ordTanggalPesan').value = besok.toISOString().slice(0,10);
   document.getElementById('waList').innerHTML = pelangganList.map(p=>`<option value="${normalizeWa(p.whatsapp).replace(/^62/,'')}">${p.nama}</option>`).join('');
   document.getElementById('namaList').innerHTML = [...new Set(pelangganList.map(p=>p.nama))].map(n=>`<option value="${n}"></option>`).join('');
   document.getElementById('pickContactBtn').style.display = ('contacts' in navigator && 'ContactsManager' in window) ? 'inline-block' : 'none';
-  addItemRow();
+
+  if(editingOrderId && editingOrderData){
+    const {order, items} = editingOrderData;
+    document.getElementById('pesananBaruTitle').textContent = 'Edit Pesanan';
+    document.getElementById('editModeBanner').style.display = 'flex';
+    document.getElementById('editModeText').textContent = 'Sedang mengedit pesanan ' + order.nomor_pesanan;
+    document.getElementById('ordNama').value = order.nama_pelanggan;
+    document.getElementById('ordWa').value = normalizeWa(order.whatsapp).replace(/^62/,'');
+    document.getElementById('ordAlamat').value = order.alamat||'';
+    document.getElementById('ordCatatan').value = order.catatan||'';
+    document.getElementById('ordDiskon').value = order.diskon||0;
+    document.getElementById('ordOngkir').value = order.biaya_kirim||0;
+    document.getElementById('ordTanggalPesan').value = order.tanggal_pesan ? new Date(order.tanggal_pesan).toISOString().slice(0,10) : '';
+    items.forEach(it=>{
+      const rowId = 'row'+(itemRowSeq++);
+      orderItems.push({rowId, productId:it.product_id, tipeInput:it.tipe_input, inputValue:it.input_value, keterangan:it.keterangan||''});
+    });
+    document.getElementById('ordSubmitBtn').textContent = 'Simpan Perubahan';
+  } else {
+    document.getElementById('pesananBaruTitle').textContent = 'Input Pesanan Baru';
+    document.getElementById('editModeBanner').style.display = 'none';
+    document.getElementById('ordWa').value='';
+    document.getElementById('ordNama').value='';
+    document.getElementById('ordAlamat').value='';
+    document.getElementById('ordCatatan').value='';
+    document.getElementById('ordDiskon').value=0;
+    document.getElementById('ordOngkir').value=0;
+    const besok = new Date(); besok.setDate(besok.getDate()+1);
+    document.getElementById('ordTanggalPesan').value = besok.toISOString().slice(0,10);
+    document.getElementById('ordSubmitBtn').textContent = 'Simpan Pesanan';
+    addItemRow();
+  }
+  renderItemRows();
   renderOrderSummary();
   document.getElementById('ordStatusBox').className='status-box';
 }
+document.getElementById('cancelEditBtn').addEventListener('click', ()=>{
+  editingOrderId = null; editingOrderData = null;
+  initOrderForm();
+});
 document.getElementById('ordWa').addEventListener('change', function(){
   const typed = normalizeWa(this.value);
   const found = pelangganList.find(p=>normalizeWa(p.whatsapp)===typed);
@@ -681,16 +732,20 @@ document.getElementById('ordSubmitBtn').addEventListener('click', async ()=>{
       catatan:document.getElementById('ordCatatan').value.trim(),
       tanggalPesan: document.getElementById('ordTanggalPesan').value
     };
-    const res = await api('createOrder', payload);
+    const isEdit = !!editingOrderId;
+    if(isEdit) payload.orderId = editingOrderId;
+    const res = await api(isEdit ? 'updateOrder' : 'createOrder', payload);
     if(res.status==='ok'){
       box.textContent = res.message; box.className='status-box show ok';
       await loadMasterData();
-      setTimeout(()=>openDetail(res.order.id), 600);
+      const gotoId = isEdit ? editingOrderId : res.order.id;
+      editingOrderId = null; editingOrderData = null;
+      setTimeout(()=>openDetail(gotoId), 600);
     } else {
       box.textContent = res.message; box.className='status-box show err';
     }
   }catch(e){ box.textContent='Gagal terhubung ke server.'; box.className='status-box show err'; }
-  finally{ btn.disabled=false; btn.textContent='Simpan Pesanan'; }
+  finally{ btn.disabled=false; btn.textContent = editingOrderId ? 'Simpan Perubahan' : 'Simpan Pesanan'; }
 });
 
 /* ================= RIWAYAT PESANAN ================= */
@@ -742,7 +797,7 @@ function renderDetail(){
         <div>
           <h2>${order.nomor_pesanan}</h2>
           <p style="color:var(--ink-soft);font-size:13px;margin-top:4px;">Dibuat: ${new Date(order.tanggal).toLocaleString('id-ID')}</p>
-          <p style="color:var(--ink-soft);font-size:13px;margin-top:2px;">Untuk: <b style="color:var(--green-dark);">${formatHariTanggal(order.tanggal_pesan)}</b></p>
+          <p style="color:var(--ink-soft);font-size:13px;margin-top:2px;">Untuk: <b style="color:var(--green-dark);">${formatHariTanggal(order.tanggal_pesan || order.tanggal)}</b></p>
         </div>
         <div style="text-align:right;">
           <span class="badge st-${badgeClass(order.status_pesanan)}">${order.status_pesanan}</span>
@@ -767,6 +822,7 @@ function renderDetail(){
       ${order.catatan ? `<p style="font-size:13px;color:var(--ink-soft);margin-top:10px;"><b>Catatan:</b> ${order.catatan}</p>` : ''}
 
       <div class="quickbtns">
+        ${canEditOrder() ? `<button class="btn btn-outline" onclick="editOrder()">✏️ Edit Pesanan</button>` : ''}
         <button class="btn btn-outline" onclick="openStatusModal()">Ubah Status</button>
         <button class="btn btn-outline" onclick="openBayarModal()">Catat Pembayaran</button>
         ${hasInvoice ? `<button class="btn btn-primary" onclick="viewInvoice()">Lihat Invoice</button>` : `<button class="btn btn-primary" onclick="buatInvoice()">Buat Invoice</button>`}
@@ -775,6 +831,11 @@ function renderDetail(){
     </div>`;
 }
 
+function editOrder(){
+  editingOrderId = currentOrder.order.id;
+  editingOrderData = { order: currentOrder.order, items: currentOrder.items };
+  switchView('pesananBaru');
+}
 function openStatusModal(){
   document.getElementById('modalStatusSelect').value = currentOrder.order.status_pesanan;
   document.getElementById('modalStatus').classList.add('show');
@@ -820,7 +881,7 @@ function viewInvoice(){
     <div class="invoice-box">
       <div class="invoice-head">
         <div class="biz">
-          <div style="font-size:32px;">🥟</div>
+          <div style="font-size:32px;">🤗</div>
           <div><h2>${NAMA_USAHA}</h2><p style="color:var(--ink-soft);font-size:12.5px;margin:2px 0 0;">Invoice Pesanan</p></div>
         </div>
         <div class="meta">
@@ -846,7 +907,7 @@ document.getElementById('printInvoiceBtn').addEventListener('click', ()=>window.
 document.getElementById('waInvoiceBtn').addEventListener('click', ()=>{
   const {order, invoices} = currentOrder;
   const inv = invoices[0];
-  const msg = `Halo Kak *${order.nama_pelanggan}*,\nInvoice pesanan Anda sudah kami buat. 🧾\n\n_Nomor Invoice:_ *${inv.nomor_invoice}*\n*Total Tagihan:* ${rupiah(inv.total_tagihan)}\n_Status Pembayaran:_ *${order.status_pembayaran}*\n\nTerima kasih telah memesan Bakpao Ijo Gembul 🙏`;
+  const msg = `Halo Kak *${order.nama_pelanggan}*,\nInvoice pesanan Anda sudah kami buat. 📄\n\n_Nomor Invoice:_ *${inv.nomor_invoice}*\n*Total Tagihan:* ${rupiah(inv.total_tagihan)}\n_Status Pembayaran:_ *${order.status_pembayaran}*\n\nTerima kasih telah memesan Bakpao Ijo Gembul 🙏`;
   window.open(`https://wa.me/${normalizeWa(order.whatsapp)}?text=${encodeURIComponent(msg)}`, '_blank');
 });
 function kirimWaPesanan(){
@@ -855,12 +916,16 @@ function kirimWaPesanan(){
   const isBaru = order.status_pesanan === 'Pesanan Baru';
   const parts = [];
   parts.push(`Halo Kak *${order.nama_pelanggan}*,`);
-  if(isBaru) parts.push(`Pesanan Anda di *Bakpao Ijo Gembul* sudah kami terima. 🥟`);
-  parts.push(`_Nomor Pesanan:_ *${order.nomor_pesanan}*\n_Tanggal Pesanan:_ *${formatHariTanggal(order.tanggal_pesan)}*`);
+  if(isBaru) parts.push(`Pesanan Anda di *Bakpao Ijo Gembul* sudah kami terima. 😊`);
+  parts.push(`_Nomor Pesanan:_ *${order.nomor_pesanan}*\n_Tanggal Pesanan:_ *${formatHariTanggal(order.tanggal_pesan || order.tanggal)}*`);
   let detail = `*Detail Pesanan:*\n${daftar}`;
   if(order.catatan) detail += `\n*Catatan:* ${order.catatan}`;
   parts.push(detail);
-  parts.push(`*Total Pesanan:* ${rupiah(order.total)}\n_Status Pesanan:_ *${order.status_pesanan}*`);
+  let totalBlock = `*Subtotal:* ${rupiah(order.subtotal)}`;
+  if(Number(order.diskon)>0) totalBlock += `\n*Diskon:* -${rupiah(order.diskon)}`;
+  if(Number(order.biaya_kirim)>0) totalBlock += `\n*Biaya Kirim:* ${rupiah(order.biaya_kirim)}`;
+  totalBlock += `\n*Total Pembayaran:* ${rupiah(order.total)}\n_Status Pesanan:_ *${order.status_pesanan}*`;
+  parts.push(totalBlock);
   if(isBaru) parts.push(`Jika PO ini belum sesuai dengan pesanan kakak, silahkan info ke admin kami.`);
   parts.push(`Terima kasih telah memesan Bakpao Ijo Gembul 🙏`);
   const msg = parts.join('\n\n');
@@ -924,7 +989,7 @@ async function loadPelanggan(){
     <td class="mono">${rupiah(c.total_transaksi)}</td>
     <td>${c.tanggal_terakhir ? new Date(c.tanggal_terakhir).toLocaleDateString('id-ID') : '-'}</td>
     <td style="white-space:nowrap;">
-      <button class="btn btn-outline" onclick='openPelangganModal(${JSON.stringify(c).replace(/'/g,"&apos;")})'>Edit</button>
+      ${isAdmin() ? `<button class="btn btn-outline" onclick='openPelangganModal(${JSON.stringify(c).replace(/'/g,"&apos;")})'>Edit</button>` : ''}
       <button class="btn btn-outline" onclick="searchByCustomer('${c.nama.replace(/'/g,"")}')">Riwayat</button>
     </td>
   </tr>`).join('')}</tbody>`;
