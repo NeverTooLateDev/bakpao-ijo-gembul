@@ -588,21 +588,21 @@ function renderDashTable(orders, tanggalLabel){
     : '<tbody><tr><td class="empty-msg">Tidak ada pesanan untuk tanggal ini.</td></tr></tbody>';
 }
 async function selectDashboardDate(dateKey, label){
-  if(dateKey === todayKeyClient()){
-    renderDashStats(dashboardDefaultData.totalPesananHariIni, dashboardDefaultData.omzetHariIni, dashboardDefaultData.belumSelesai, dashboardDefaultData.belumDibayar, 'Hari Ini');
-    renderDashChart(dashboardDefaultData.chart, dateKey);
-    renderDashTable(dashboardDefaultData.pesananTerbaru, null);
-    document.getElementById('dashResetBtn').style.display = 'none';
-    return;
-  }
+  const isToday = dateKey === todayKeyClient();
   const res = await api('dashboardByDate', {tanggal: dateKey});
   if(res.status!=='ok') return;
-  renderDashStats(res.totalPesanan, res.omzet, res.belumSelesai, res.belumDibayar, '('+label+')');
+  renderDashStats(res.totalPesanan, res.omzet, res.belumSelesai, res.belumDibayar, isToday ? '(Hari Ini)' : '('+label+')');
   renderDashChart(dashboardDefaultData.chart, dateKey);
   renderDashTable(res.pesanan, label);
   document.getElementById('dashResetBtn').style.display = 'inline-block';
 }
-document.getElementById('dashResetBtn').addEventListener('click', ()=>selectDashboardDate(todayKeyClient(),''));
+function resetDashboardToOverview(){
+  renderDashStats(dashboardDefaultData.totalPesananHariIni, dashboardDefaultData.omzetHariIni, dashboardDefaultData.belumSelesai, dashboardDefaultData.belumDibayar, 'Hari Ini');
+  renderDashChart(dashboardDefaultData.chart, todayKeyClient());
+  renderDashTable(dashboardDefaultData.pesananTerbaru, null);
+  document.getElementById('dashResetBtn').style.display = 'none';
+}
+document.getElementById('dashResetBtn').addEventListener('click', resetDashboardToOverview);
 
 /* ================= INPUT PESANAN ================= */
 let editingOrderId = null;
