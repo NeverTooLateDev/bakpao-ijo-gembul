@@ -142,6 +142,9 @@ tr.clickable:hover{background:var(--green-light);}
 .invoice-head .meta b{color:var(--green-dark);font-family:'JetBrains Mono',monospace;font-size:15px;}
 .thankyou{margin-top:18px;text-align:center;font-family:'Fredoka',sans-serif;color:var(--green-dark);font-size:14px;padding-top:14px;border-top:1px dashed var(--line);}
 
+.submaster-btn{background:transparent;}
+.submaster-btn.active{background:#fff;color:var(--green-dark)!important;box-shadow:0 1px 2px rgba(31,42,34,0.08);}
+
 .chart-bars{display:flex;align-items:flex-end;gap:5px;height:120px;margin-top:10px;}
 .chart-bars .bar{flex:1;background:var(--green-mid);border-radius:4px 4px 0 0;position:relative;min-height:2px;}
 .chart-bars .bar .lbl{position:absolute;bottom:-18px;left:0;right:0;text-align:center;font-size:9px;color:var(--ink-soft);}
@@ -180,8 +183,7 @@ tr.clickable:hover{background:var(--green-light);}
     <button data-view="dashboard" class="active">Dashboard</button>
     <button data-view="pesananBaru">Input Pesanan</button>
     <button data-view="riwayat">Riwayat Pesanan</button>
-    <button data-view="produk" class="admin-only">Produk</button>
-    <button data-view="pelanggan">Pelanggan</button>
+    <button data-view="masterdata" class="admin-only">Master Data</button>
     <button data-view="laporan" class="admin-only">Laporan</button>
   </div>
 
@@ -283,17 +285,22 @@ tr.clickable:hover{background:var(--green-light);}
     <div id="invoiceContent"></div>
   </section>
 
-  <!-- PRODUK -->
-  <section class="view" id="view-produk">
-    <h2>Data Produk</h2>
-    <div class="quickbtns"><button id="addProdukBtn">+ Tambah Produk</button></div>
-    <div class="card"><div class="tablewrap"><table id="produkTable"></table></div></div>
-  </section>
+  <!-- MASTER DATA -->
+  <section class="view" id="view-masterdata">
+    <h2>Master Data</h2>
+    <div class="tabs" style="background:var(--green-light);margin-top:14px;border-radius:12px;padding:4px;">
+      <button data-submaster="produk" class="submaster-btn active" style="color:var(--green-dark);border-radius:9px;">Produk</button>
+      <button data-submaster="pelanggan" class="submaster-btn" style="color:var(--green-dark);border-radius:9px;">Pelanggan</button>
+    </div>
 
-  <!-- PELANGGAN -->
-  <section class="view" id="view-pelanggan">
-    <h2>Data Pelanggan</h2>
-    <div class="card" style="margin-top:14px;"><div class="tablewrap"><table id="pelangganTable"></table></div></div>
+    <div class="submaster active" id="submaster-produk" style="margin-top:14px;">
+      <div class="quickbtns" style="margin-top:0;"><button id="addProdukBtn">+ Tambah Produk</button></div>
+      <div class="card"><div class="tablewrap"><table id="produkTable"></table></div></div>
+    </div>
+
+    <div class="submaster" id="submaster-pelanggan" style="margin-top:14px;display:none;">
+      <div class="card"><div class="tablewrap"><table id="pelangganTable"></table></div></div>
+    </div>
   </section>
 
   <!-- LAPORAN -->
@@ -393,7 +400,7 @@ tr.clickable:hover{background:var(--green-light);}
    ⚙️ EDIT DI SINI SAJA — baris paling atas file ini.
    Ganti dengan URL Web App Apps Script kamu (diakhiri /exec).
    ============================================================ */
-const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbwMdBf3aYynng9EbmC-ktnO7BAxB3LjjAmlItTXXcVrE7a-oN1hWpCTt4tQsenx2dYdzQ/exec';
+const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbwWJjstVd6T2jLhCH6i9pifPuaSFyVyVlkTaG44onIczsNOAwB8PynqR5Wku0LD96AyuQ/exec';
 const BUNDLE_QTY = 6, BUNDLE_HARGA = 10000;
 const NAMA_USAHA = 'Bakpao Ijo Gembul';
 
@@ -465,17 +472,25 @@ function hitungItemClient(tipeInput, hargaSatuan, inputValue){
 
 /* ================= NAV ================= */
 function switchView(name){
-  if((name==='produk' || name==='laporan') && !isAdmin()){ name='dashboard'; }
+  if((name==='masterdata' || name==='laporan') && !isAdmin()){ name='dashboard'; }
   document.querySelectorAll('.view').forEach(v=>v.classList.remove('active'));
   document.getElementById('view-'+name).classList.add('active');
   document.querySelectorAll('#tabs button').forEach(b=>b.classList.toggle('active', b.dataset.view===name));
   if(name==='dashboard') loadDashboard();
   if(name==='pesananBaru'){ loadMasterData().then(initOrderForm); }
   if(name==='riwayat') loadRiwayat();
-  if(name==='produk') loadProduk();
-  if(name==='pelanggan') loadPelanggan();
+  if(name==='masterdata') switchSubMaster('produk');
   if(name==='laporan') { setLaporanPreset('bulan'); }
 }
+function switchSubMaster(name){
+  document.querySelectorAll('.submaster').forEach(s=>{ s.style.display='none'; s.classList.remove('active'); });
+  document.getElementById('submaster-'+name).style.display='block';
+  document.getElementById('submaster-'+name).classList.add('active');
+  document.querySelectorAll('.submaster-btn').forEach(b=>b.classList.toggle('active', b.dataset.submaster===name));
+  if(name==='produk') loadProduk();
+  if(name==='pelanggan') loadPelanggan();
+}
+document.querySelectorAll('.submaster-btn').forEach(b=>b.addEventListener('click', ()=>switchSubMaster(b.dataset.submaster)));
 document.querySelectorAll('#tabs button').forEach(b=>b.addEventListener('click', ()=>{
   if(b.dataset.view==='pesananBaru'){ editingOrderId=null; editingOrderData=null; }
   switchView(b.dataset.view);
