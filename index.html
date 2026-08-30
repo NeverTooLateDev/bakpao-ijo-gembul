@@ -200,7 +200,7 @@ tr.clickable:hover{background:var(--green-light);}
       <button class="secondary admin-only" data-goto="laporan">Laporan Penjualan</button>
     </div>
     <div class="card">
-      <h3 style="font-size:15px;">Omzet 14 Hari Terakhir</h3>
+      <h3 style="font-size:15px;">Omzet: 7 Hari Terakhir & 3 Hari Kedepan</h3>
       <div class="chart-bars" id="dashChart"></div>
     </div>
     <div class="card" style="margin-top:14px;">
@@ -555,13 +555,15 @@ async function loadDashboard(){
   const max = Math.max(1, ...d.chart.map(c=>c.omzet));
   document.getElementById('dashChart').innerHTML = d.chart.map(c=>`<div class="bar" style="height:${Math.max(2,c.omzet/max*100)}%;" title="${rupiah(c.omzet)}"><span class="lbl">${c.tanggal}</span></div>`).join('');
   const tbody = d.pesananTerbaru.map(o=>`<tr class="clickable" onclick="openDetail('${o.id}')">
-      <td class="mono">${o.nomor_pesanan}</td><td>${o.nama_pelanggan}</td>
+      <td class="mono">${o.nomor_pesanan}</td>
+      <td>${new Date(o.tanggal_pesan || o.tanggal).toLocaleDateString('id-ID')}</td>
+      <td>${o.nama_pelanggan}</td>
       <td class="mono">${rupiah(o.total)}</td>
       <td><span class="badge st-${badgeClass(o.status_pesanan)}">${o.status_pesanan}</span></td>
       <td><span class="badge pay-${badgeClass(o.status_pembayaran)}">${o.status_pembayaran}</span></td>
     </tr>`).join('');
   document.getElementById('dashRecentTable').innerHTML = d.pesananTerbaru.length
-    ? `<thead><tr><th>No.</th><th>Pelanggan</th><th>Total</th><th>Status</th><th>Bayar</th></tr></thead><tbody>${tbody}</tbody>`
+    ? `<thead><tr><th>No.</th><th>Tgl Pesan</th><th>Pelanggan</th><th>Total</th><th>Status</th><th>Bayar</th></tr></thead><tbody>${tbody}</tbody>`
     : '<tbody><tr><td class="empty-msg">Belum ada pesanan.</td></tr></tbody>';
 }
 
