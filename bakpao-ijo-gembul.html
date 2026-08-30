@@ -393,7 +393,7 @@ tr.clickable:hover{background:var(--green-light);}
    ⚙️ EDIT DI SINI SAJA — baris paling atas file ini.
    Ganti dengan URL Web App Apps Script kamu (diakhiri /exec).
    ============================================================ */
-const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbxWJCtQin1-ey1VfIjDATmptUc_Zlgc6iQb9bYt2klncXFc2jr2ngI4-5y4BIibifd2kQ/exec';
+const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbwWJjstVd6T2jLhCH6i9pifPuaSFyVyVlkTaG44onIczsNOAwB8PynqR5Wku0LD96AyuQ/exec';
 const BUNDLE_QTY = 6, BUNDLE_HARGA = 10000;
 const NAMA_USAHA = 'Bakpao Ijo Gembul';
 
@@ -825,7 +825,7 @@ function renderDetail(){
       <div class="quickbtns">
         ${canEditOrder() ? `<button class="btn btn-outline" onclick="editOrder()">✏️ Edit Pesanan</button>` : ''}
         <button class="btn btn-outline" onclick="openStatusModal()">Ubah Status</button>
-        <button class="btn btn-outline" onclick="openBayarModal()">Catat Pembayaran</button>
+        ${order.status_pesanan!=='Dibatalkan' ? `<button class="btn btn-outline" onclick="openBayarModal()">Catat Pembayaran</button>` : ''}
         ${hasInvoice ? `<button class="btn btn-primary" onclick="viewInvoice()">Lihat Invoice</button>` : `<button class="btn btn-primary" onclick="buatInvoice()">Buat Invoice</button>`}
         <button class="btn btn-wa" onclick="kirimWaPesanan()">Kirim Info Pesanan via WhatsApp</button>
       </div>
