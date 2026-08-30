@@ -262,8 +262,8 @@ tr.clickable:hover{background:var(--green-light);}
     <h2>Riwayat Pesanan</h2>
     <div class="filters" style="margin-top:14px;">
       <input type="text" id="filSearch" placeholder="Cari nama / nomor pesanan...">
-      <input type="date" id="filMulai">
-      <input type="date" id="filSelesai">
+      <input type="date" id="filMulai" title="Tgl pesan dari">
+      <input type="date" id="filSelesai" title="Tgl pesan sampai">
       <select id="filStatus"><option value="">Semua Status Pesanan</option><option>Pesanan Baru</option><option>Diproses</option><option>Siap Diambil / Siap Dikirim</option><option>Selesai</option><option>Dibatalkan</option></select>
       <select id="filBayar"><option value="">Semua Status Bayar</option><option>Belum Dibayar</option><option>Dibayar Sebagian</option><option>Lunas</option></select>
       <button class="btn btn-outline" id="filApplyBtn">Terapkan</button>
@@ -780,10 +780,10 @@ async function loadRiwayat(){
   riwayatCache = res.orders;
   const table = document.getElementById('riwayatTable');
   if(res.orders.length===0){ table.innerHTML='<tbody><tr><td class="empty-msg">Tidak ada pesanan yang cocok.</td></tr></tbody>'; return; }
-  table.innerHTML = `<thead><tr><th>No. Pesanan</th><th>Tanggal</th><th>Pelanggan</th><th>Total</th><th>Status</th><th>Bayar</th></tr></thead>
+  table.innerHTML = `<thead><tr><th>No. Pesanan</th><th>Tgl Pesan</th><th>Pelanggan</th><th>Total</th><th>Status</th><th>Bayar</th></tr></thead>
   <tbody>${res.orders.map(o=>`<tr class="clickable" onclick="openDetail('${o.id}')">
     <td class="mono">${o.nomor_pesanan}</td>
-    <td>${new Date(o.tanggal).toLocaleDateString('id-ID')}</td>
+    <td>${new Date(o.tanggal_pesan || o.tanggal).toLocaleDateString('id-ID')}</td>
     <td>${o.nama_pelanggan}</td>
     <td class="mono">${rupiah(o.total)}</td>
     <td><span class="badge st-${badgeClass(o.status_pesanan)}">${o.status_pesanan}</span></td>
