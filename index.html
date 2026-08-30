@@ -271,6 +271,7 @@ tr.clickable:hover{background:var(--green-light);}
       <select id="filBayar"><option value="">Semua Status Bayar</option><option>Belum Dibayar</option><option>Dibayar Sebagian</option><option>Lunas</option></select>
       <button class="btn btn-outline" id="filApplyBtn">Terapkan</button>
     </div>
+    <div class="card" id="riwayatSummary" style="margin-bottom:12px;display:none;"></div>
     <div class="card"><div class="tablewrap"><table id="riwayatTable"></table></div></div>
   </section>
 
@@ -817,7 +818,22 @@ async function loadRiwayat(){
   if(res.status!=='ok') return;
   riwayatCache = res.orders;
   const table = document.getElementById('riwayatTable');
-  if(res.orders.length===0){ table.innerHTML='<tbody><tr><td class="empty-msg">Tidak ada pesanan yang cocok.</td></tr></tbody>'; return; }
+  const summary = document.getElementById('riwayatSummary');
+  if(res.orders.length===0){
+    table.innerHTML='<tbody><tr><td class="empty-msg">Tidak ada pesanan yang cocok.</td></tr></tbody>';
+    summary.style.display='none';
+    return;
+  }
+  const totalSemua = res.orders.reduce((s,o)=>s+Number(o.total||0),0);
+  const totalDibayar = res.orders.reduce((s,o)=>s+Number(o.jumlah_dibayar||0),0);
+  const totalSisa = res.orders.reduce((s,o)=>s+Number(o.sisa_tagihan||0),0);
+  summary.style.display='block';
+  summary.innerHTML = `<div class="totals" style="border-top:none;padding-top:0;">
+    <div class="row"><span>${res.orders.length} pesanan ditemukan</span><span></span></div>
+    <div class="row final"><span>Total Keseluruhan</span><span class="mono">${rupiah(totalSemua)}</span></div>
+    <div class="row"><span>Sudah Dibayar</span><span class="mono">${rupiah(totalDibayar)}</span></div>
+    <div class="row"><span>Sisa Tagihan</span><span class="mono">${rupiah(totalSisa)}</span></div>
+  </div>`;
   table.innerHTML = `<thead><tr><th>No. Pesanan</th><th>Tgl Pesan</th><th>Pelanggan</th><th>Total</th><th>Status</th><th>Bayar</th></tr></thead>
   <tbody>${res.orders.map(o=>`<tr class="clickable" onclick="openDetail('${o.id}')">
     <td class="mono">${o.nomor_pesanan}</td>
