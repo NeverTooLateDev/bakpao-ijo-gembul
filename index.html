@@ -190,6 +190,7 @@ tr.clickable:hover{background:var(--green-light);}
     <button data-view="riwayat">Riwayat Pesanan</button>
     <button data-view="masterdata" class="admin-only">Master Data</button>
     <button data-view="laporan" class="admin-only">Laporan</button>
+    <button data-view="labarugi" class="admin-only">Laba Rugi</button>
   </div>
 
   <!-- DASHBOARD -->
@@ -330,6 +331,61 @@ tr.clickable:hover{background:var(--green-light);}
     <div class="card" style="margin-top:14px;">
       <h3 style="font-size:15px;margin-bottom:8px;">Produk Terlaris</h3>
       <div class="tablewrap"><table id="lapProdukTable"></table></div>
+    </div>
+  </section>
+
+  <!-- LABA RUGI -->
+  <section class="view" id="view-labarugi">
+    <h2>Laba Rugi</h2>
+    <div class="filters" style="margin-top:14px;">
+      <button class="btn btn-outline" data-lrpreset="hari">Hari Ini</button>
+      <button class="btn btn-outline" data-lrpreset="minggu">Minggu Ini</button>
+      <button class="btn btn-outline" data-lrpreset="bulan">Bulan Ini</button>
+      <input type="date" id="lrMulai">
+      <input type="date" id="lrSelesai">
+      <button class="btn btn-primary" id="lrApplyBtn">Tampilkan</button>
+    </div>
+
+    <div class="card">
+      <div class="totals" style="border-top:none;padding-top:0;">
+        <div class="row"><span>Pendapatan (Omzet)</span><span class="mono">Rp <span id="lrOmzet">0</span></span></div>
+        <div class="row"><span>HPP (Modal Bahan)</span><span class="mono">- Rp <span id="lrHpp">0</span></span></div>
+        <div class="row final"><span>Laba Kotor</span><span class="mono" id="lrLabaKotor">Rp 0</span></div>
+        <div class="row" style="margin-top:8px;"><span>Beban Operasional</span><span class="mono">- Rp <span id="lrBeban">0</span></span></div>
+        <div class="row final" style="font-size:22px;"><span>Laba Bersih</span><span class="mono" id="lrLabaBersih">Rp 0</span></div>
+      </div>
+    </div>
+
+    <div class="grid grid-2" style="margin-top:14px;align-items:start;">
+      <div class="card">
+        <h3 style="font-size:15px;margin-bottom:10px;">Beban per Kategori</h3>
+        <div class="tablewrap"><table id="lrKategoriTable"></table></div>
+      </div>
+      <div class="card">
+        <h3 style="font-size:15px;margin-bottom:10px;">Catat Pengeluaran Baru</h3>
+        <div class="field"><label>Kategori</label>
+          <select id="lrKategori">
+            <option>Bahan Tambahan</option>
+            <option>Gas</option>
+            <option>Listrik</option>
+            <option>Kemasan</option>
+            <option>Transport</option>
+            <option>Gaji/Upah</option>
+            <option>Sewa Tempat</option>
+            <option>Lainnya</option>
+          </select>
+        </div>
+        <div class="field"><label>Keterangan</label><input type="text" id="lrKeterangan" placeholder="Contoh: isi ulang gas 3kg"></div>
+        <div class="field"><label>Jumlah (Rp)</label><input type="number" id="lrJumlah" min="0"></div>
+        <div class="field"><label>Tanggal</label><input type="date" id="lrTanggal"></div>
+        <div class="status-box" id="lrStatusBox"></div>
+        <button class="btn btn-primary" id="lrSubmitBtn" style="width:100%;">Simpan Pengeluaran</button>
+      </div>
+    </div>
+
+    <div class="card" style="margin-top:14px;">
+      <h3 style="font-size:15px;margin-bottom:8px;">Daftar Pengeluaran</h3>
+      <div class="tablewrap"><table id="lrExpenseTable"></table></div>
     </div>
   </section>
 </div>
@@ -478,7 +534,7 @@ function hitungItemClient(tipeInput, hargaSatuan, inputValue){
 
 /* ================= NAV ================= */
 function switchView(name){
-  if((name==='masterdata' || name==='laporan') && !isAdmin()){ name='dashboard'; }
+  if((name==='masterdata' || name==='laporan' || name==='labarugi') && !isAdmin()){ name='dashboard'; }
   document.querySelectorAll('.view').forEach(v=>v.classList.remove('active'));
   document.getElementById('view-'+name).classList.add('active');
   document.querySelectorAll('#tabs button').forEach(b=>b.classList.toggle('active', b.dataset.view===name));
@@ -487,6 +543,7 @@ function switchView(name){
   if(name==='riwayat') loadRiwayat();
   if(name==='masterdata') switchSubMaster('produk');
   if(name==='laporan') { setLaporanPreset('bulan'); }
+  if(name==='labarugi') { setLabaRugiPreset('bulan'); }
 }
 function switchSubMaster(name){
   document.querySelectorAll('.submaster').forEach(s=>{ s.style.display='none'; s.classList.remove('active'); });
@@ -1156,6 +1213,83 @@ function resetLaporanToRange(){
   document.getElementById('lapResetBtn').style.display = 'none';
 }
 document.getElementById('lapResetBtn').addEventListener('click', resetLaporanToRange);
+
+/* ================= LABA RUGI ================= */
+function setLabaRugiPreset(preset){
+  const today = new Date();
+  let start = new Date(today);
+  if(preset==='hari'){ /* start = today */ }
+  else if(preset==='minggu'){ start.setDate(today.getDate() - today.getDay()); }
+  else if(preset==='bulan'){ start = new Date(today.getFullYear(), today.getMonth(), 1); }
+  document.getElementById('lrMulai').value = start.toISOString().slice(0,10);
+  document.getElementById('lrSelesai').value = today.toISOString().slice(0,10);
+  document.getElementById('lrTanggal').value = today.toISOString().slice(0,10);
+  loadLabaRugi();
+}
+document.querySelectorAll('[data-lrpreset]').forEach(b=>b.addEventListener('click', ()=>setLabaRugiPreset(b.dataset.lrpreset)));
+document.getElementById('lrApplyBtn').addEventListener('click', loadLabaRugi);
+
+async function loadLabaRugi(){
+  const payload = { tanggalMulai: document.getElementById('lrMulai').value, tanggalSelesai: document.getElementById('lrSelesai').value };
+  const res = await api('getLabaRugi', payload);
+  if(res.status!=='ok') return;
+
+  document.getElementById('lrOmzet').textContent = Math.round(res.totalOmzet).toLocaleString('id-ID');
+  document.getElementById('lrHpp').textContent = Math.round(res.totalHpp).toLocaleString('id-ID');
+  document.getElementById('lrLabaKotor').textContent = rupiah(res.labaKotor);
+  document.getElementById('lrBeban').textContent = Math.round(res.totalBeban).toLocaleString('id-ID');
+  const labaBersihEl = document.getElementById('lrLabaBersih');
+  labaBersihEl.textContent = rupiah(res.labaBersih);
+  labaBersihEl.style.color = res.labaBersih>=0 ? 'var(--green-dark)' : 'var(--red)';
+
+  document.getElementById('lrKategoriTable').innerHTML = res.bebanPerKategori.length
+    ? `<thead><tr><th>Kategori</th><th>Jumlah</th></tr></thead><tbody>${res.bebanPerKategori.map(k=>`<tr><td>${k.kategori}</td><td class="mono">${rupiah(k.jumlah)}</td></tr>`).join('')}</tbody>`
+    : '<tbody><tr><td class="empty-msg">Belum ada pengeluaran di rentang ini.</td></tr></tbody>';
+
+  document.getElementById('lrExpenseTable').innerHTML = res.pengeluaran.length
+    ? `<thead><tr><th>Tanggal</th><th>Kategori</th><th>Keterangan</th><th>Jumlah</th><th></th></tr></thead>
+       <tbody>${res.pengeluaran.map(e=>`<tr>
+          <td>${new Date(e.tanggal).toLocaleDateString('id-ID')}</td>
+          <td>${e.kategori}</td>
+          <td>${e.keterangan||'-'}</td>
+          <td class="mono">${rupiah(e.jumlah)}</td>
+          <td><button class="btn btn-outline" onclick="hapusPengeluaran('${e.id}')">Hapus</button></td>
+        </tr>`).join('')}</tbody>`
+    : '<tbody><tr><td class="empty-msg">Belum ada pengeluaran di rentang ini.</td></tr></tbody>';
+}
+
+document.getElementById('lrSubmitBtn').addEventListener('click', async ()=>{
+  const box = document.getElementById('lrStatusBox');
+  box.className = 'status-box';
+  const jumlah = Number(document.getElementById('lrJumlah').value)||0;
+  if(jumlah<=0){ box.textContent='Jumlah pengeluaran wajib diisi.'; box.className='status-box show err'; return; }
+  const btn = document.getElementById('lrSubmitBtn');
+  btn.disabled=true; btn.textContent='Menyimpan...';
+  try{
+    const pengeluaran = {
+      kategori: document.getElementById('lrKategori').value,
+      keterangan: document.getElementById('lrKeterangan').value.trim(),
+      jumlah: jumlah,
+      tanggal: document.getElementById('lrTanggal').value
+    };
+    const res = await api('addExpense', {pengeluaran});
+    if(res.status==='ok'){
+      box.textContent = res.message; box.className='status-box show ok';
+      document.getElementById('lrKeterangan').value='';
+      document.getElementById('lrJumlah').value='';
+      loadLabaRugi();
+    } else {
+      box.textContent = res.message; box.className='status-box show err';
+    }
+  }catch(e){ box.textContent='Gagal terhubung ke server.'; box.className='status-box show err'; }
+  finally{ btn.disabled=false; btn.textContent='Simpan Pengeluaran'; }
+});
+
+async function hapusPengeluaran(id){
+  if(!confirm('Hapus data pengeluaran ini?')) return;
+  await api('deleteExpense', {id});
+  loadLabaRugi();
+}
 </script>
 </body>
 </html>
