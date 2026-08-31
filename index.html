@@ -320,8 +320,6 @@ tr.clickable:hover{background:var(--green-light);}
       <input type="date" id="lapMulai">
       <input type="date" id="lapSelesai">
       <button class="btn btn-primary" id="lapApplyBtn">Tampilkan</button>
-      <button class="btn btn-outline" id="lapExportBtn">Export Excel (CSV)</button>
-      <button class="btn btn-outline" id="lapPdfBtn">Export PDF</button>
     </div>
     <div class="grid grid-5" id="lapStats"></div>
     <button class="btn btn-outline" id="lapResetBtn" style="display:none;margin-top:10px;">↩ Kembali ke Ringkasan Rentang Tanggal</button>
@@ -1140,8 +1138,8 @@ function renderLapChart(chart, selectedKey){
   document.getElementById('lapChart').innerHTML = chart.length ? chart.map(c=>`<div class="bar${c.tanggalKey===selectedKey?' bar-selected':''}" style="height:${Math.max(2,c.omzet/max*100)}%;cursor:pointer;" title="${rupiah(c.omzet)}" onclick="selectLaporanDate('${c.tanggalKey}','${c.tanggal}')"><span class="lbl">${c.tanggal}</span></div>`).join('') : '<p class="empty-msg">Tidak ada data.</p>';
 }
 function renderLapProdukTable(produkTerlaris){
-  document.getElementById('lapProdukTable').innerHTML = `<thead><tr><th>Produk</th><th>Paket Terjual</th><th>PCS Terjual</th><th>Rp Terjual</th></tr></thead>
-    <tbody>${produkTerlaris.map(p=>`<tr><td>${p.nama}</td><td>${p.paketQty===null?'-':p.paketQty}</td><td>${p.pcsQty}</td><td class="mono">${rupiah(p.rupiah)}</td></tr>`).join('') || '<tr><td colspan="4" class="empty-msg">Tidak ada data.</td></tr>'}</tbody>`;
+  document.getElementById('lapProdukTable').innerHTML = `<thead><tr><th>Produk</th><th>Paket Terjual</th><th>PCS Terjual</th><th>Rp Terjual</th><th>Profit</th></tr></thead>
+    <tbody>${produkTerlaris.map(p=>`<tr><td>${p.nama}</td><td>${p.paketQty===null?'-':p.paketQty}</td><td>${p.pcsQty}</td><td class="mono">${rupiah(p.rupiah)}</td><td class="mono" style="color:${p.profit>=0?'var(--green-dark)':'var(--red)'};">${rupiah(p.profit)}</td></tr>`).join('') || '<tr><td colspan="5" class="empty-msg">Tidak ada data.</td></tr>'}</tbody>`;
 }
 async function selectLaporanDate(dateKey, label){
   const res = await api('getReport', { tanggalMulai: dateKey, tanggalSelesai: dateKey });
@@ -1158,19 +1156,6 @@ function resetLaporanToRange(){
   document.getElementById('lapResetBtn').style.display = 'none';
 }
 document.getElementById('lapResetBtn').addEventListener('click', resetLaporanToRange);
-document.getElementById('lapExportBtn').addEventListener('click', ()=>{
-  if(!lastReport) return;
-  let csv = 'Nomor Pesanan,Tanggal,Pelanggan,Total,Status Pesanan,Status Pembayaran\n';
-  lastReport.orders.forEach(o=>{
-    csv += `${o.nomor_pesanan},${new Date(o.tanggal).toLocaleDateString('id-ID')},${o.nama_pelanggan},${o.total},${o.status_pesanan},${o.status_pembayaran}\n`;
-  });
-  const blob = new Blob([csv], {type:'text/csv;charset=utf-8;'});
-  const link = document.createElement('a');
-  link.href = URL.createObjectURL(blob);
-  link.download = 'laporan-penjualan-'+document.getElementById('lapMulai').value+'_sd_'+document.getElementById('lapSelesai').value+'.csv';
-  link.click();
-});
-document.getElementById('lapPdfBtn').addEventListener('click', ()=>window.print());
 </script>
 </body>
 </html>
