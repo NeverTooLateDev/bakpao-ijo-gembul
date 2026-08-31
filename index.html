@@ -828,7 +828,7 @@ async function loadRiwayat(){
   const totalDibayar = res.orders.reduce((s,o)=>s+Number(o.jumlah_dibayar||0),0);
   const totalSisa = res.orders.reduce((s,o)=>s+Number(o.sisa_tagihan||0),0);
   summary.style.display='block';
-  summary.innerHTML = `<div class="totals" style="border-top:none;padding-top:0;">
+  summary.innerHTML = `<div class="totals" style="border-top:none;padding-top:0;margin-top:0;">
     <div class="row"><span>${res.orders.length} pesanan ditemukan</span><span></span></div>
     <div class="row final"><span>Total Keseluruhan</span><span class="mono">${rupiah(totalSemua)}</span></div>
     <div class="row"><span>Sudah Dibayar</span><span class="mono">${rupiah(totalDibayar)}</span></div>
