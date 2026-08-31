@@ -65,8 +65,9 @@ input,select,textarea{font-family:'Plus Jakarta Sans',sans-serif;}
 .card{background:var(--paper);border:1px solid var(--line);border-radius:16px;padding:18px;box-shadow:0 1px 3px rgba(31,42,34,0.05);}
 .grid{display:grid;gap:14px;}
 .grid-4{grid-template-columns:repeat(4,1fr);}
+.grid-5{grid-template-columns:repeat(5,1fr);}
 .grid-2{grid-template-columns:1fr 1fr;}
-@media(max-width:820px){.grid-4{grid-template-columns:1fr 1fr;}.grid-2{grid-template-columns:1fr;}}
+@media(max-width:820px){.grid-4{grid-template-columns:1fr 1fr;}.grid-5{grid-template-columns:1fr 1fr;}.grid-2{grid-template-columns:1fr;}}
 
 .stat{padding:16px;}
 .stat .label{font-size:12.5px;color:var(--ink-soft);font-weight:600;text-transform:uppercase;letter-spacing:.02em;}
@@ -322,7 +323,7 @@ tr.clickable:hover{background:var(--green-light);}
       <button class="btn btn-outline" id="lapExportBtn">Export Excel (CSV)</button>
       <button class="btn btn-outline" id="lapPdfBtn">Export PDF</button>
     </div>
-    <div class="grid grid-4" id="lapStats"></div>
+    <div class="grid grid-5" id="lapStats"></div>
     <button class="btn btn-outline" id="lapResetBtn" style="display:none;margin-top:10px;">↩ Kembali ke Ringkasan Rentang Tanggal</button>
     <div class="card" style="margin-top:14px;">
       <h3 style="font-size:15px;">Grafik Omzet Harian</h3>
@@ -1120,16 +1121,17 @@ async function loadLaporan(){
   const res = await api('getReport', payload);
   if(res.status!=='ok') return;
   lastReport = res;
-  renderLapStats(res.totalPesanan, res.totalProdukTerjual, res.totalOmzet, res.totalPiutang, '');
+  renderLapStats(res.totalPesanan, res.totalProdukTerjual, res.totalOmzet, res.totalProfit, res.totalPiutang, '');
   renderLapChart(res.grafikHarian, null);
   renderLapProdukTable(res.produkTerlaris);
   document.getElementById('lapResetBtn').style.display = 'none';
 }
-function renderLapStats(pesanan, produk, omzet, piutang, labelSuffix){
+function renderLapStats(pesanan, produk, omzet, profit, piutang, labelSuffix){
   document.getElementById('lapStats').innerHTML = `
     <div class="card stat"><div class="label">Total Pesanan ${labelSuffix}</div><div class="value">${pesanan}</div></div>
     <div class="card stat"><div class="label">Produk Terjual (pcs) ${labelSuffix}</div><div class="value">${produk}</div></div>
     <div class="card stat"><div class="label">Total Omzet ${labelSuffix}</div><div class="value mono" style="font-size:18px;">${rupiah(omzet)}</div></div>
+    <div class="card stat"><div class="label">Profit ${labelSuffix}</div><div class="value mono" style="font-size:18px;color:${profit>=0?'var(--green-dark)':'var(--red)'};">${rupiah(profit)}</div></div>
     <div class="card stat"><div class="label">Piutang ${labelSuffix}</div><div class="value mono" style="font-size:18px;">${rupiah(piutang)}</div></div>
   `;
 }
@@ -1144,13 +1146,13 @@ function renderLapProdukTable(produkTerlaris){
 async function selectLaporanDate(dateKey, label){
   const res = await api('getReport', { tanggalMulai: dateKey, tanggalSelesai: dateKey });
   if(res.status!=='ok') return;
-  renderLapStats(res.totalPesanan, res.totalProdukTerjual, res.totalOmzet, res.totalPiutang, '('+label+')');
+  renderLapStats(res.totalPesanan, res.totalProdukTerjual, res.totalOmzet, res.totalProfit, res.totalPiutang, '('+label+')');
   renderLapChart(lastReport.grafikHarian, dateKey);
   renderLapProdukTable(res.produkTerlaris);
   document.getElementById('lapResetBtn').style.display = 'inline-block';
 }
 function resetLaporanToRange(){
-  renderLapStats(lastReport.totalPesanan, lastReport.totalProdukTerjual, lastReport.totalOmzet, lastReport.totalPiutang, '');
+  renderLapStats(lastReport.totalPesanan, lastReport.totalProdukTerjual, lastReport.totalOmzet, lastReport.totalProfit, lastReport.totalPiutang, '');
   renderLapChart(lastReport.grafikHarian, null);
   renderLapProdukTable(lastReport.produkTerlaris);
   document.getElementById('lapResetBtn').style.display = 'none';
