@@ -323,6 +323,7 @@ tr.clickable:hover{background:var(--green-light);}
       <button class="btn btn-outline" id="lapPdfBtn">Export PDF</button>
     </div>
     <div class="grid grid-4" id="lapStats"></div>
+    <button class="btn btn-outline" id="lapResetBtn" style="display:none;margin-top:10px;">↩ Kembali ke Ringkasan Rentang Tanggal</button>
     <div class="card" style="margin-top:14px;">
       <h3 style="font-size:15px;">Grafik Omzet Harian</h3>
       <div class="chart-bars" id="lapChart"></div>
@@ -1119,17 +1120,42 @@ async function loadLaporan(){
   const res = await api('getReport', payload);
   if(res.status!=='ok') return;
   lastReport = res;
-  document.getElementById('lapStats').innerHTML = `
-    <div class="card stat"><div class="label">Total Pesanan</div><div class="value">${res.totalPesanan}</div></div>
-    <div class="card stat"><div class="label">Produk Terjual</div><div class="value">${res.totalProdukTerjual}</div></div>
-    <div class="card stat"><div class="label">Total Omzet</div><div class="value mono" style="font-size:18px;">${rupiah(res.totalOmzet)}</div></div>
-    <div class="card stat"><div class="label">Piutang</div><div class="value mono" style="font-size:18px;">${rupiah(res.totalPiutang)}</div></div>
-  `;
-  const max = Math.max(1, ...res.grafikHarian.map(c=>c.omzet));
-  document.getElementById('lapChart').innerHTML = res.grafikHarian.length ? res.grafikHarian.map(c=>`<div class="bar" style="height:${Math.max(2,c.omzet/max*100)}%;" title="${rupiah(c.omzet)}"><span class="lbl">${c.tanggal.slice(8,10)}/${c.tanggal.slice(5,7)}</span></div>`).join('') : '<p class="empty-msg">Tidak ada data.</p>';
-  document.getElementById('lapProdukTable').innerHTML = `<thead><tr><th>Produk</th><th>Terjual (pcs)</th></tr></thead>
-    <tbody>${res.produkTerlaris.map(p=>`<tr><td>${p.nama}</td><td>${p.qty}</td></tr>`).join('') || '<tr><td colspan="2" class="empty-msg">Tidak ada data.</td></tr>'}</tbody>`;
+  renderLapStats(res.totalPesanan, res.totalProdukTerjual, res.totalOmzet, res.totalPiutang, '');
+  renderLapChart(res.grafikHarian, null);
+  renderLapProdukTable(res.produkTerlaris);
+  document.getElementById('lapResetBtn').style.display = 'none';
 }
+function renderLapStats(pesanan, produk, omzet, piutang, labelSuffix){
+  document.getElementById('lapStats').innerHTML = `
+    <div class="card stat"><div class="label">Total Pesanan ${labelSuffix}</div><div class="value">${pesanan}</div></div>
+    <div class="card stat"><div class="label">Produk Terjual (pcs) ${labelSuffix}</div><div class="value">${produk}</div></div>
+    <div class="card stat"><div class="label">Total Omzet ${labelSuffix}</div><div class="value mono" style="font-size:18px;">${rupiah(omzet)}</div></div>
+    <div class="card stat"><div class="label">Piutang ${labelSuffix}</div><div class="value mono" style="font-size:18px;">${rupiah(piutang)}</div></div>
+  `;
+}
+function renderLapChart(chart, selectedKey){
+  const max = Math.max(1, ...chart.map(c=>c.omzet));
+  document.getElementById('lapChart').innerHTML = chart.length ? chart.map(c=>`<div class="bar${c.tanggalKey===selectedKey?' bar-selected':''}" style="height:${Math.max(2,c.omzet/max*100)}%;cursor:pointer;" title="${rupiah(c.omzet)}" onclick="selectLaporanDate('${c.tanggalKey}','${c.tanggal}')"><span class="lbl">${c.tanggal}</span></div>`).join('') : '<p class="empty-msg">Tidak ada data.</p>';
+}
+function renderLapProdukTable(produkTerlaris){
+  document.getElementById('lapProdukTable').innerHTML = `<thead><tr><th>Produk</th><th>Paket Terjual</th><th>PCS Terjual</th><th>Rp Terjual</th></tr></thead>
+    <tbody>${produkTerlaris.map(p=>`<tr><td>${p.nama}</td><td>${p.paketQty===null?'-':p.paketQty}</td><td>${p.pcsQty}</td><td class="mono">${rupiah(p.rupiah)}</td></tr>`).join('') || '<tr><td colspan="4" class="empty-msg">Tidak ada data.</td></tr>'}</tbody>`;
+}
+async function selectLaporanDate(dateKey, label){
+  const res = await api('getReport', { tanggalMulai: dateKey, tanggalSelesai: dateKey });
+  if(res.status!=='ok') return;
+  renderLapStats(res.totalPesanan, res.totalProdukTerjual, res.totalOmzet, res.totalPiutang, '('+label+')');
+  renderLapChart(lastReport.grafikHarian, dateKey);
+  renderLapProdukTable(res.produkTerlaris);
+  document.getElementById('lapResetBtn').style.display = 'inline-block';
+}
+function resetLaporanToRange(){
+  renderLapStats(lastReport.totalPesanan, lastReport.totalProdukTerjual, lastReport.totalOmzet, lastReport.totalPiutang, '');
+  renderLapChart(lastReport.grafikHarian, null);
+  renderLapProdukTable(lastReport.produkTerlaris);
+  document.getElementById('lapResetBtn').style.display = 'none';
+}
+document.getElementById('lapResetBtn').addEventListener('click', resetLaporanToRange);
 document.getElementById('lapExportBtn').addEventListener('click', ()=>{
   if(!lastReport) return;
   let csv = 'Nomor Pesanan,Tanggal,Pelanggan,Total,Status Pesanan,Status Pembayaran\n';
