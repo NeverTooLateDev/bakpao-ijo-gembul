@@ -239,6 +239,10 @@ tr.clickable:hover{background:var(--green-light);}
         </div>
         <datalist id="waList"></datalist>
         <div class="field"><label>Tanggal Pesanan (untuk kapan)</label><input type="date" id="ordTanggalPesan"></div>
+        <div class="field admin-only" id="resellerField" style="flex-direction:row;align-items:center;gap:8px;">
+          <input type="checkbox" id="ordIsReseller" style="width:18px;height:18px;">
+          <label style="text-transform:none;font-size:13.5px;margin:0;">🏷️ Pesanan untuk Reseller (pakai Harga Reseller)</label>
+        </div>
         <div class="field"><label>Alamat</label><textarea id="ordAlamat" placeholder="Alamat pengiriman/pengambilan..."></textarea></div>
         <div class="field"><label>Catatan Pesanan</label><textarea id="ordCatatan" placeholder="Contoh: ambil sore ini..."></textarea></div>
 
@@ -462,6 +466,7 @@ tr.clickable:hover{background:var(--green-light);}
     <div class="field"><label>Isi (pcs, untuk paket)</label><input type="number" id="modalProdukIsi" value="1" min="1"></div>
     <div class="field"><label>Harga Beli (Rp)</label><input type="number" id="modalProdukHargaBeli" min="0" value="0"></div>
     <div class="field"><label>Harga Jual (Rp)</label><input type="number" id="modalProdukHargaJual" min="0"></div>
+    <div class="field"><label>Harga Reseller (Rp)</label><input type="number" id="modalProdukHargaReseller" min="0" placeholder="Opsional"></div>
     <div class="field"><label>Status</label><select id="modalProdukStatus"><option value="aktif">Aktif</option><option value="nonaktif">Nonaktif</option></select></div>
     <div class="modal-actions">
       <button class="btn btn-outline" id="modalProdukCancel">Batal</button>
@@ -492,7 +497,7 @@ tr.clickable:hover{background:var(--green-light);}
    Ganti dengan URL Web App Apps Script kamu (diakhiri /exec).
    ============================================================ */
 const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbztPWvN134lxXzoiMIDnypPGSxUGV_hydlCRQ_PYtUwudAg6Iy43j7f7-Ts1pgm3W0PPw/exec';
-const BUNDLE_QTY = 6, BUNDLE_HARGA = 10000;
+const BUNDLE_QTY = 3, BUNDLE_HARGA = 5000;
 const NAMA_USAHA = 'Bakpao Ijo Gembul';
 
 let currentUser = null;
@@ -542,8 +547,20 @@ function applyRolePermissions(){
     el.style.display = isAdmin() ? '' : 'none';
   });
 }
-function hitungItemClient(tipeInput, hargaSatuan, inputValue){
+function hitungItemClient(tipeInput, hargaSatuan, inputValue, hargaReseller, isReseller){
   inputValue = Number(inputValue)||0;
+  if(isReseller && Number(hargaReseller)>0){
+    if(tipeInput==='rp'){
+      const rp = Math.max(0, Math.round(inputValue));
+      const qty = Math.max(1, Math.round(rp/Number(hargaReseller)));
+      const normal = qty*hargaSatuan;
+      return {qty, hargaNormal:normal, diskon:normal-rp, subtotal:rp};
+    }
+    const qty = Math.max(1, Math.round(inputValue));
+    const subtotal = qty*Number(hargaReseller);
+    const normal = qty*hargaSatuan;
+    return {qty, hargaNormal:normal, diskon:normal-subtotal, subtotal};
+  }
   if(tipeInput==='paket'){
     const qty = Math.max(1, Math.round(inputValue));
     const subtotal = qty*hargaSatuan;
@@ -745,6 +762,7 @@ function initOrderForm(){
     document.getElementById('ordDiskon').value = order.diskon||0;
     document.getElementById('ordOngkir').value = order.biaya_kirim||0;
     document.getElementById('ordTanggalPesan').value = order.tanggal_pesan ? wibDateStr(new Date(order.tanggal_pesan)) : '';
+    document.getElementById('ordIsReseller').checked = !!order.is_reseller;
     items.forEach(it=>{
       const rowId = 'row'+(itemRowSeq++);
       orderItems.push({rowId, productId:it.product_id, tipeInput:it.tipe_input, inputValue:it.input_value, keterangan:it.keterangan||''});
@@ -761,6 +779,7 @@ function initOrderForm(){
     document.getElementById('ordOngkir').value=0;
     const besok = new Date(); besok.setDate(besok.getDate()+1);
     document.getElementById('ordTanggalPesan').value = wibDateStr(besok);
+    document.getElementById('ordIsReseller').checked = false;
     document.getElementById('ordSubmitBtn').textContent = 'Simpan Pesanan';
     addItemRow();
   }
@@ -863,13 +882,15 @@ function updateItemSubline(it){
   if(!el) return;
   const produk = produkList.find(p=>p.id===it.productId);
   if(!produk){ el.innerHTML=''; return; }
-  const hasil = hitungItemClient(it.tipeInput, Number(produk.harga_jual), it.inputValue);
+  const isReseller = document.getElementById('ordIsReseller').checked;
+  const hasil = hitungItemClient(it.tipeInput, Number(produk.harga_jual), it.inputValue, produk.harga_reseller, isReseller);
   el.innerHTML = `<span>${hasil.qty} pcs${hasil.diskon>0?' · hemat '+rupiah(hasil.diskon):''}</span><b>${rupiah(hasil.subtotal)}</b>`;
 }
 function getOrderItemResults(){
+  const isReseller = document.getElementById('ordIsReseller').checked;
   return orderItems.filter(it=>it.productId).map(it=>{
     const produk = produkList.find(p=>p.id===it.productId);
-    const hasil = hitungItemClient(it.tipeInput, Number(produk.harga_jual), it.inputValue);
+    const hasil = hitungItemClient(it.tipeInput, Number(produk.harga_jual), it.inputValue, produk.harga_reseller, isReseller);
     return Object.assign({produk}, it, hasil);
   });
 }
@@ -886,6 +907,7 @@ function renderOrderSummary(){
   document.getElementById('ordTotal').textContent = rupiah(total);
 }
 document.getElementById('addItemBtn').addEventListener('click', addItemRow);
+document.getElementById('ordIsReseller').addEventListener('change', renderItemRows);
 document.getElementById('ordDiskon').addEventListener('input', renderOrderSummary);
 document.getElementById('ordOngkir').addEventListener('input', renderOrderSummary);
 
@@ -906,7 +928,8 @@ document.getElementById('ordSubmitBtn').addEventListener('click', async ()=>{
       diskon:Number(document.getElementById('ordDiskon').value)||0,
       biayaKirim:Number(document.getElementById('ordOngkir').value)||0,
       catatan:document.getElementById('ordCatatan').value.trim(),
-      tanggalPesan: document.getElementById('ordTanggalPesan').value
+      tanggalPesan: document.getElementById('ordTanggalPesan').value,
+      isReseller: document.getElementById('ordIsReseller').checked
     };
     const isEdit = !!editingOrderId;
     if(isEdit) payload.orderId = editingOrderId;
@@ -991,6 +1014,7 @@ function renderDetail(){
           <p style="color:var(--ink-soft);font-size:13px;margin-top:2px;">Untuk: <b style="color:var(--green-dark);">${formatHariTanggal(order.tanggal_pesan || order.tanggal)}</b></p>
         </div>
         <div style="text-align:right;">
+          ${order.is_reseller ? `<span class="badge" style="background:#3E2723;color:#FFD180;">🏷️ Reseller</span>` : ''}
           <span class="badge st-${badgeClass(order.status_pesanan)}">${order.status_pesanan}</span>
           <span class="badge pay-${badgeClass(order.status_pembayaran)}">${order.status_pembayaran}</span>
         </div>
@@ -1144,11 +1168,12 @@ async function loadProduk(){
   const res = await api('listProducts', {});
   produkList = res.produk || produkList;
   const table = document.getElementById('produkTable');
-  table.innerHTML = `<thead><tr><th>SKU</th><th>Nama</th><th>Tipe</th><th>Isi</th><th>Harga Jual</th><th>Status</th><th></th></tr></thead>
+  table.innerHTML = `<thead><tr><th>SKU</th><th>Nama</th><th>Tipe</th><th>Isi</th><th>Harga Jual</th><th>Harga Reseller</th><th>Status</th><th></th></tr></thead>
   <tbody>${res.produk.map(p=>`<tr>
     <td class="mono">${p.id}</td>
     <td>${p.nama_produk}<br><span style="color:var(--ink-soft);font-size:12px;">${p.deskripsi||''}</span></td>
     <td>${p.tipe}</td><td>${p.isi_pcs}</td><td class="mono">${rupiah(p.harga_jual)}</td>
+    <td class="mono">${p.harga_reseller ? rupiah(p.harga_reseller) : '-'}</td>
     <td><span class="badge ${p.status==='aktif'?'pay-Lunas':'pay-Belum_Dibayar'}">${p.status}</span></td>
     <td><button class="btn btn-outline" onclick='editProduk(${JSON.stringify(p).replace(/'/g,"&apos;")})'>Edit</button></td>
   </tr>`).join('')}</tbody>`;
@@ -1167,6 +1192,7 @@ function openProdukModal(p){
   document.getElementById('modalProdukIsi').value = p ? p.isi_pcs : 1;
   document.getElementById('modalProdukHargaBeli').value = p ? p.harga_beli : 0;
   document.getElementById('modalProdukHargaJual').value = p ? p.harga_jual : '';
+  document.getElementById('modalProdukHargaReseller').value = p ? (p.harga_reseller||'') : '';
   document.getElementById('modalProdukStatus').value = p ? p.status : 'aktif';
   document.getElementById('modalProduk').classList.add('show');
 }
@@ -1182,6 +1208,7 @@ document.getElementById('modalProdukSave').addEventListener('click', async ()=>{
     isi_pcs: Number(document.getElementById('modalProdukIsi').value)||1,
     harga_beli: Number(document.getElementById('modalProdukHargaBeli').value)||0,
     harga_jual: Number(document.getElementById('modalProdukHargaJual').value)||0,
+    harga_reseller: Number(document.getElementById('modalProdukHargaReseller').value)||0,
     status: document.getElementById('modalProdukStatus').value
   };
   const res = await api('saveProduct', {produk});
