@@ -322,7 +322,7 @@ tr.clickable:hover{background:var(--green-light);}
       <input type="date" id="lapSelesai">
       <button class="btn btn-primary" id="lapApplyBtn">Tampilkan</button>
     </div>
-    <div class="grid grid-5" id="lapStats"></div>
+    <div class="grid grid-4" id="lapStats"></div>
     <button class="btn btn-outline" id="lapResetBtn" style="display:none;margin-top:10px;">↩ Kembali ke Ringkasan Rentang Tanggal</button>
     <div class="card" style="margin-top:14px;">
       <h3 style="font-size:15px;">Grafik Omzet Harian</h3>
@@ -418,6 +418,34 @@ tr.clickable:hover{background:var(--green-light);}
     <div class="modal-actions">
       <button class="btn btn-outline" id="modalBayarCancel">Batal</button>
       <button class="btn btn-primary" id="modalBayarSave">Simpan</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL: Pengeluaran -->
+<div class="modal-bg" id="modalPengeluaran">
+  <div class="modal">
+    <h3>Edit Pengeluaran</h3>
+    <input type="hidden" id="modalPengeluaranId">
+    <div class="field"><label>Kategori</label>
+      <select id="modalPengeluaranKategori">
+        <option>Bahan Adonan</option>
+        <option>Bahan Isian</option>
+        <option>Bahan Lainnya</option>
+        <option>Packaging</option>
+        <option>Transport</option>
+        <option>Gaji/Upah</option>
+        <option>Sewa</option>
+        <option>Sosial</option>
+        <option>Lainnya</option>
+      </select>
+    </div>
+    <div class="field"><label>Keterangan</label><input type="text" id="modalPengeluaranKeterangan"></div>
+    <div class="field"><label>Jumlah (Rp)</label><input type="number" id="modalPengeluaranJumlah" min="0"></div>
+    <div class="field"><label>Tanggal</label><input type="date" id="modalPengeluaranTanggal"></div>
+    <div class="modal-actions">
+      <button class="btn btn-outline" id="modalPengeluaranCancel">Batal</button>
+      <button class="btn btn-primary" id="modalPengeluaranSave">Simpan</button>
     </div>
   </div>
 </div>
@@ -564,6 +592,35 @@ document.querySelectorAll('[data-goto]').forEach(b=>b.addEventListener('click', 
 /* ================= LOGIN ================= */
 document.getElementById('loginBtn').addEventListener('click', doLogin);
 document.getElementById('loginPassword').addEventListener('keydown', e=>{ if(e.key==='Enter') doLogin(); });
+const SESSION_KEY = 'bakpao_session';
+const SESSION_DURATION_MS = 24 * 60 * 60 * 1000; // 24 jam
+
+function simpanSesi(){
+  localStorage.setItem(SESSION_KEY, JSON.stringify({ nama: currentUser.nama, level: currentUser.level, loginTime: Date.now() }));
+}
+function bukaAppSetelahLogin(){
+  document.getElementById('userInfo').textContent = currentUser.nama + ' (' + currentUser.level + ')';
+  document.getElementById('loginScreen').style.display='none';
+  document.getElementById('appShell').style.display='block';
+  applyRolePermissions();
+}
+async function cobaSesiTersimpan(){
+  try{
+    const raw = localStorage.getItem(SESSION_KEY);
+    if(!raw) return false;
+    const sesi = JSON.parse(raw);
+    if(!sesi || !sesi.loginTime || (Date.now() - sesi.loginTime) > SESSION_DURATION_MS){
+      localStorage.removeItem(SESSION_KEY);
+      return false;
+    }
+    currentUser = { nama: sesi.nama, level: sesi.level };
+    bukaAppSetelahLogin();
+    await loadMasterData();
+    switchView('dashboard');
+    return true;
+  }catch(e){ return false; }
+}
+
 async function doLogin(){
   const username = document.getElementById('loginUsername').value.trim();
   const password = document.getElementById('loginPassword').value.trim();
@@ -576,10 +633,8 @@ async function doLogin(){
     const data = await api('login', {username, password});
     if(data.status==='ok'){
       currentUser = { nama:data.nama, level:data.level };
-      document.getElementById('userInfo').textContent = currentUser.nama + ' (' + currentUser.level + ')';
-      document.getElementById('loginScreen').style.display='none';
-      document.getElementById('appShell').style.display='block';
-      applyRolePermissions();
+      simpanSesi();
+      bukaAppSetelahLogin();
       await loadMasterData();
       switchView('dashboard');
     } else {
@@ -593,10 +648,12 @@ async function doLogin(){
 }
 document.getElementById('logoutBtn').addEventListener('click', ()=>{
   currentUser=null;
+  localStorage.removeItem(SESSION_KEY);
   document.getElementById('appShell').style.display='none';
   document.getElementById('loginScreen').style.display='flex';
   document.getElementById('loginUsername').value=''; document.getElementById('loginPassword').value='';
 });
+cobaSesiTersimpan();
 
 /* ================= MASTER DATA ================= */
 async function loadMasterData(){
@@ -1177,17 +1234,16 @@ async function loadLaporan(){
   const res = await api('getReport', payload);
   if(res.status!=='ok') return;
   lastReport = res;
-  renderLapStats(res.totalPesanan, res.totalProdukTerjual, res.totalOmzet, res.totalProfit, res.totalPiutang, '');
+  renderLapStats(res.totalPesanan, res.totalProdukTerjual, res.totalOmzet, res.totalPiutang, '');
   renderLapChart(res.grafikHarian, null);
   renderLapProdukTable(res.produkTerlaris);
   document.getElementById('lapResetBtn').style.display = 'none';
 }
-function renderLapStats(pesanan, produk, omzet, profit, piutang, labelSuffix){
+function renderLapStats(pesanan, produk, omzet, piutang, labelSuffix){
   document.getElementById('lapStats').innerHTML = `
     <div class="card stat"><div class="label">Total Pesanan ${labelSuffix}</div><div class="value">${pesanan}</div></div>
     <div class="card stat"><div class="label">Produk Terjual (pcs) ${labelSuffix}</div><div class="value">${produk}</div></div>
     <div class="card stat"><div class="label">Total Omzet ${labelSuffix}</div><div class="value mono" style="font-size:18px;">${rupiah(omzet)}</div></div>
-    <div class="card stat"><div class="label">Profit ${labelSuffix}</div><div class="value mono" style="font-size:18px;color:${profit>=0?'var(--green-dark)':'var(--red)'};">${rupiah(profit)}</div></div>
     <div class="card stat"><div class="label">Piutang ${labelSuffix}</div><div class="value mono" style="font-size:18px;">${rupiah(piutang)}</div></div>
   `;
 }
@@ -1196,19 +1252,19 @@ function renderLapChart(chart, selectedKey){
   document.getElementById('lapChart').innerHTML = chart.length ? chart.map(c=>`<div class="bar${c.tanggalKey===selectedKey?' bar-selected':''}" style="height:${Math.max(2,c.omzet/max*100)}%;cursor:pointer;" title="${rupiah(c.omzet)}" onclick="selectLaporanDate('${c.tanggalKey}','${c.tanggal}')"><span class="lbl">${c.tanggal}</span></div>`).join('') : '<p class="empty-msg">Tidak ada data.</p>';
 }
 function renderLapProdukTable(produkTerlaris){
-  document.getElementById('lapProdukTable').innerHTML = `<thead><tr><th>Produk</th><th>Paket Terjual</th><th>PCS Terjual</th><th>Rp Terjual</th><th>Profit</th></tr></thead>
-    <tbody>${produkTerlaris.map(p=>`<tr><td>${p.nama}</td><td>${p.paketQty===null?'-':p.paketQty}</td><td>${p.pcsQty}</td><td class="mono">${rupiah(p.rupiah)}</td><td class="mono" style="color:${p.profit>=0?'var(--green-dark)':'var(--red)'};">${rupiah(p.profit)}</td></tr>`).join('') || '<tr><td colspan="5" class="empty-msg">Tidak ada data.</td></tr>'}</tbody>`;
+  document.getElementById('lapProdukTable').innerHTML = `<thead><tr><th>Produk</th><th>Paket Terjual</th><th>PCS Terjual</th><th>Rp Terjual</th></tr></thead>
+    <tbody>${produkTerlaris.map(p=>`<tr><td>${p.nama}</td><td>${p.paketQty===null?'-':p.paketQty}</td><td>${p.pcsQty}</td><td class="mono">${rupiah(p.rupiah)}</td></tr>`).join('') || '<tr><td colspan="4" class="empty-msg">Tidak ada data.</td></tr>'}</tbody>`;
 }
 async function selectLaporanDate(dateKey, label){
   const res = await api('getReport', { tanggalMulai: dateKey, tanggalSelesai: dateKey });
   if(res.status!=='ok') return;
-  renderLapStats(res.totalPesanan, res.totalProdukTerjual, res.totalOmzet, res.totalProfit, res.totalPiutang, '('+label+')');
+  renderLapStats(res.totalPesanan, res.totalProdukTerjual, res.totalOmzet, res.totalPiutang, '('+label+')');
   renderLapChart(lastReport.grafikHarian, dateKey);
   renderLapProdukTable(res.produkTerlaris);
   document.getElementById('lapResetBtn').style.display = 'inline-block';
 }
 function resetLaporanToRange(){
-  renderLapStats(lastReport.totalPesanan, lastReport.totalProdukTerjual, lastReport.totalOmzet, lastReport.totalProfit, lastReport.totalPiutang, '');
+  renderLapStats(lastReport.totalPesanan, lastReport.totalProdukTerjual, lastReport.totalOmzet, lastReport.totalPiutang, '');
   renderLapChart(lastReport.grafikHarian, null);
   renderLapProdukTable(lastReport.produkTerlaris);
   document.getElementById('lapResetBtn').style.display = 'none';
@@ -1244,7 +1300,7 @@ async function loadLabaRugi(){
   labaBersihEl.style.color = res.labaBersih>=0 ? 'var(--green-dark)' : 'var(--red)';
 
   document.getElementById('lrKategoriTable').innerHTML = res.bebanPerKategori.length
-    ? `<thead><tr><th>Kategori</th><th>Jumlah</th></tr></thead><tbody>${res.bebanPerKategori.map(k=>`<tr><td>${k.kategori}</td><td class="mono">${rupiah(k.jumlah)}</td></tr>`).join('')}</tbody>`
+    ? `<thead><tr><th>Kategori</th><th>Jumlah</th><th>Kontribusi</th></tr></thead><tbody>${res.bebanPerKategori.map(k=>`<tr><td>${k.kategori}</td><td class="mono">${rupiah(k.jumlah)}</td><td class="mono">${res.totalBeban>0?(k.jumlah/res.totalBeban*100).toFixed(1):'0'}%</td></tr>`).join('')}</tbody>`
     : '<tbody><tr><td class="empty-msg">Belum ada pengeluaran di rentang ini.</td></tr></tbody>';
 
   document.getElementById('lrExpenseTable').innerHTML = res.pengeluaran.length
@@ -1254,7 +1310,10 @@ async function loadLabaRugi(){
           <td>${e.kategori}</td>
           <td>${e.keterangan||'-'}</td>
           <td class="mono">${rupiah(e.jumlah)}</td>
-          <td><button class="btn btn-outline" onclick="hapusPengeluaran('${e.id}')">Hapus</button></td>
+          <td style="white-space:nowrap;">
+            <button class="btn btn-outline" onclick='openEditPengeluaran(${JSON.stringify(e).replace(/'/g,"&apos;")})'>Edit</button>
+            <button class="btn btn-outline" onclick="hapusPengeluaran('${e.id}')">Hapus</button>
+          </td>
         </tr>`).join('')}</tbody>`
     : '<tbody><tr><td class="empty-msg">Belum ada pengeluaran di rentang ini.</td></tr></tbody>';
 }
@@ -1291,6 +1350,27 @@ async function hapusPengeluaran(id){
   await api('deleteExpense', {id});
   loadLabaRugi();
 }
+function openEditPengeluaran(e){
+  document.getElementById('modalPengeluaranId').value = e.id;
+  document.getElementById('modalPengeluaranKategori').value = e.kategori;
+  document.getElementById('modalPengeluaranKeterangan').value = e.keterangan||'';
+  document.getElementById('modalPengeluaranJumlah').value = e.jumlah;
+  document.getElementById('modalPengeluaranTanggal').value = new Date(e.tanggal).toISOString().slice(0,10);
+  document.getElementById('modalPengeluaran').classList.add('show');
+}
+document.getElementById('modalPengeluaranCancel').addEventListener('click', ()=>document.getElementById('modalPengeluaran').classList.remove('show'));
+document.getElementById('modalPengeluaranSave').addEventListener('click', async ()=>{
+  const pengeluaran = {
+    id: document.getElementById('modalPengeluaranId').value,
+    kategori: document.getElementById('modalPengeluaranKategori').value,
+    keterangan: document.getElementById('modalPengeluaranKeterangan').value.trim(),
+    jumlah: Number(document.getElementById('modalPengeluaranJumlah').value)||0,
+    tanggal: document.getElementById('modalPengeluaranTanggal').value
+  };
+  await api('updateExpense', {pengeluaran});
+  document.getElementById('modalPengeluaran').classList.remove('show');
+  loadLabaRugi();
+});
 </script>
 </body>
 </html>
