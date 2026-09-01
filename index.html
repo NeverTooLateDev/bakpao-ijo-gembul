@@ -196,7 +196,7 @@ tr.clickable:hover{background:var(--green-light);}
   <!-- DASHBOARD -->
   <section class="view active" id="view-dashboard">
     <h2>Dashboard</h2>
-    <div class="grid grid-4" id="dashStats" style="margin-top:14px;"></div>
+    <div class="grid grid-5" id="dashStats" style="margin-top:14px;"></div>
     <div class="quickbtns">
       <button data-goto="pesananBaru">+ Input Pesanan Baru</button>
       <button class="secondary" data-goto="riwayat">Lihat Pesanan</button>
@@ -674,14 +674,15 @@ async function loadDashboard(){
   const d = await api('dashboard', {});
   if(d.status!=='ok') return;
   dashboardDefaultData = d;
-  renderDashStats(d.totalPesananHariIni, d.omzetHariIni, d.belumSelesai, d.belumDibayar, 'Hari Ini');
+  renderDashStats(d.totalPesananHariIni, d.totalPcsHariIni, d.omzetHariIni, d.belumSelesai, d.belumDibayar, 'Hari Ini');
   renderDashChart(d.chart, todayKeyClient());
   renderDashTable(d.pesananTerbaru, null);
   document.getElementById('dashResetBtn').style.display = 'none';
 }
-function renderDashStats(pesanan, omzet, belumSelesai, belumDibayar, labelSuffix){
+function renderDashStats(pesanan, pcs, omzet, belumSelesai, belumDibayar, labelSuffix){
   document.getElementById('dashStats').innerHTML = `
     <div class="card stat"><div class="label">Pesanan ${labelSuffix}</div><div class="value">${pesanan}</div></div>
+    <div class="card stat"><div class="label">PCS Terjual ${labelSuffix}</div><div class="value">${pcs}</div></div>
     <div class="card stat"><div class="label">Omzet ${labelSuffix}</div><div class="value mono" style="font-size:19px;">${rupiah(omzet)}</div></div>
     <div class="card stat"><div class="label">Belum Selesai ${labelSuffix}</div><div class="value">${belumSelesai}</div></div>
     <div class="card stat"><div class="label">Belum Dibayar ${labelSuffix}</div><div class="value">${belumDibayar}</div></div>
@@ -709,13 +710,13 @@ async function selectDashboardDate(dateKey, label){
   const isToday = dateKey === todayKeyClient();
   const res = await api('dashboardByDate', {tanggal: dateKey});
   if(res.status!=='ok') return;
-  renderDashStats(res.totalPesanan, res.omzet, res.belumSelesai, res.belumDibayar, isToday ? '(Hari Ini)' : '('+label+')');
+  renderDashStats(res.totalPesanan, res.totalPcs, res.omzet, res.belumSelesai, res.belumDibayar, isToday ? '(Hari Ini)' : '('+label+')');
   renderDashChart(dashboardDefaultData.chart, dateKey);
   renderDashTable(res.pesanan, label);
   document.getElementById('dashResetBtn').style.display = 'inline-block';
 }
 function resetDashboardToOverview(){
-  renderDashStats(dashboardDefaultData.totalPesananHariIni, dashboardDefaultData.omzetHariIni, dashboardDefaultData.belumSelesai, dashboardDefaultData.belumDibayar, 'Hari Ini');
+  renderDashStats(dashboardDefaultData.totalPesananHariIni, dashboardDefaultData.totalPcsHariIni, dashboardDefaultData.omzetHariIni, dashboardDefaultData.belumSelesai, dashboardDefaultData.belumDibayar, 'Hari Ini');
   renderDashChart(dashboardDefaultData.chart, todayKeyClient());
   renderDashTable(dashboardDefaultData.pesananTerbaru, null);
   document.getElementById('dashResetBtn').style.display = 'none';
