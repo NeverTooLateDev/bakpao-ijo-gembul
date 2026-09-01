@@ -503,8 +503,12 @@ let currentOrder = null; // { order, items, invoices, payments }
 let riwayatCache = [];
 
 /* ================= HELPERS ================= */
-function rupiah(n){ return 'Rp ' + Math.round(n||0).toLocaleString('id-ID'); }
+function rupiah(n){ return 'Rp ' + Math.round(n||0).toLocaleString('id-ID',{timeZone:'Asia/Jakarta'}); }
 function badgeClass(s){ return (s||'').replace(/\s+/g,'_').replace(/\//g,''); }
+function wibDateStr(d){
+  d = d || new Date();
+  return new Intl.DateTimeFormat('en-CA', {timeZone:'Asia/Jakarta'}).format(d);
+}
 function normalizeWa(wa){
   let s = String(wa||'').replace(/[^0-9]/g,'');
   if(s.indexOf('62')===0) return s;
@@ -664,8 +668,7 @@ async function loadMasterData(){
 /* ================= DASHBOARD ================= */
 let dashboardDefaultData = null;
 function todayKeyClient(){
-  const d = new Date();
-  return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
+  return wibDateStr();
 }
 async function loadDashboard(){
   const d = await api('dashboard', {});
@@ -692,7 +695,7 @@ function renderDashTable(orders, tanggalLabel){
   document.getElementById('dashRecentTitle').textContent = tanggalLabel ? ('Pesanan untuk ' + tanggalLabel) : 'Pesanan Terbaru';
   const tbody = orders.map(o=>`<tr class="clickable" onclick="openDetail('${o.id}')">
       <td class="mono">${o.nomor_pesanan}</td>
-      <td>${new Date(o.tanggal_pesan || o.tanggal).toLocaleDateString('id-ID')}</td>
+      <td>${new Date(o.tanggal_pesan || o.tanggal).toLocaleDateString('id-ID',{timeZone:'Asia/Jakarta'})}</td>
       <td>${o.nama_pelanggan}</td>
       <td class="mono">${rupiah(o.total)}</td>
       <td><span class="badge st-${badgeClass(o.status_pesanan)}">${o.status_pesanan}</span></td>
@@ -740,7 +743,7 @@ function initOrderForm(){
     document.getElementById('ordCatatan').value = order.catatan||'';
     document.getElementById('ordDiskon').value = order.diskon||0;
     document.getElementById('ordOngkir').value = order.biaya_kirim||0;
-    document.getElementById('ordTanggalPesan').value = order.tanggal_pesan ? new Date(order.tanggal_pesan).toISOString().slice(0,10) : '';
+    document.getElementById('ordTanggalPesan').value = order.tanggal_pesan ? wibDateStr(new Date(order.tanggal_pesan)) : '';
     items.forEach(it=>{
       const rowId = 'row'+(itemRowSeq++);
       orderItems.push({rowId, productId:it.product_id, tipeInput:it.tipe_input, inputValue:it.input_value, keterangan:it.keterangan||''});
@@ -756,7 +759,7 @@ function initOrderForm(){
     document.getElementById('ordDiskon').value=0;
     document.getElementById('ordOngkir').value=0;
     const besok = new Date(); besok.setDate(besok.getDate()+1);
-    document.getElementById('ordTanggalPesan').value = besok.toISOString().slice(0,10);
+    document.getElementById('ordTanggalPesan').value = wibDateStr(besok);
     document.getElementById('ordSubmitBtn').textContent = 'Simpan Pesanan';
     addItemRow();
   }
@@ -952,7 +955,7 @@ async function loadRiwayat(){
   table.innerHTML = `<thead><tr><th>No. Pesanan</th><th>Tgl Pesan</th><th>Pelanggan</th><th>Total</th><th>Status</th><th>Bayar</th></tr></thead>
   <tbody>${res.orders.map(o=>`<tr class="clickable" onclick="openDetail('${o.id}')">
     <td class="mono">${o.nomor_pesanan}</td>
-    <td>${new Date(o.tanggal_pesan || o.tanggal).toLocaleDateString('id-ID')}</td>
+    <td>${new Date(o.tanggal_pesan || o.tanggal).toLocaleDateString('id-ID',{timeZone:'Asia/Jakarta'})}</td>
     <td>${o.nama_pelanggan}</td>
     <td class="mono">${rupiah(o.total)}</td>
     <td><span class="badge st-${badgeClass(o.status_pesanan)}">${o.status_pesanan}</span></td>
@@ -983,7 +986,7 @@ function renderDetail(){
       <div style="display:flex;justify-content:space-between;flex-wrap:wrap;gap:10px;">
         <div>
           <h2>${order.nomor_pesanan}</h2>
-          <p style="color:var(--ink-soft);font-size:13px;margin-top:4px;">Dibuat: ${new Date(order.tanggal).toLocaleString('id-ID')}</p>
+          <p style="color:var(--ink-soft);font-size:13px;margin-top:4px;">Dibuat: ${new Date(order.tanggal).toLocaleString('id-ID',{timeZone:'Asia/Jakarta'})}</p>
           <p style="color:var(--ink-soft);font-size:13px;margin-top:2px;">Untuk: <b style="color:var(--green-dark);">${formatHariTanggal(order.tanggal_pesan || order.tanggal)}</b></p>
         </div>
         <div style="text-align:right;">
@@ -1033,7 +1036,7 @@ async function selesaikanDanLunas(){
       orderId: order.id,
       jumlah: Number(order.sisa_tagihan),
       metode: 'Tunai',
-      tanggal: new Date().toISOString().slice(0,10),
+      tanggal: wibDateStr(),
       catatan: 'Pelunasan otomatis saat pesanan diselesaikan'
     });
   }
@@ -1053,7 +1056,7 @@ document.getElementById('modalStatusSave').addEventListener('click', async ()=>{
 
 function openBayarModal(){
   document.getElementById('modalBayarJumlah').value = currentOrder.order.sisa_tagihan;
-  document.getElementById('modalBayarTanggal').value = new Date().toISOString().slice(0,10);
+  document.getElementById('modalBayarTanggal').value = wibDateStr();
   document.getElementById('modalBayarCatatan').value='';
   document.getElementById('modalBayar').classList.add('show');
 }
@@ -1089,7 +1092,7 @@ function viewInvoice(){
         </div>
         <div class="meta">
           <div>No. Invoice</div><b>${inv.nomor_invoice}</b>
-          <div style="margin-top:6px;">${new Date(inv.tanggal_invoice).toLocaleDateString('id-ID')}</div>
+          <div style="margin-top:6px;">${new Date(inv.tanggal_invoice).toLocaleDateString('id-ID',{timeZone:'Asia/Jakarta'})}</div>
         </div>
       </div>
       <p style="font-size:13.5px;"><b>Kepada:</b> ${order.nama_pelanggan}<br>${order.whatsapp}<br>${order.alamat||''}</p>
@@ -1196,7 +1199,7 @@ async function loadPelanggan(){
   <tbody>${res.pelanggan.map(c=>`<tr>
     <td>${c.nama}</td><td class="mono">${c.whatsapp}</td><td>${c.total_pesanan}</td>
     <td class="mono">${rupiah(c.total_transaksi)}</td>
-    <td>${c.tanggal_terakhir ? new Date(c.tanggal_terakhir).toLocaleDateString('id-ID') : '-'}</td>
+    <td>${c.tanggal_terakhir ? new Date(c.tanggal_terakhir).toLocaleDateString('id-ID',{timeZone:'Asia/Jakarta'}) : '-'}</td>
     <td style="white-space:nowrap;">
       ${isAdmin() ? `<button class="btn btn-outline" onclick='openPelangganModal(${JSON.stringify(c).replace(/'/g,"&apos;")})'>Edit</button>` : ''}
       <button class="btn btn-outline" onclick="searchByCustomer('${c.nama.replace(/'/g,"")}')">Riwayat</button>
@@ -1238,8 +1241,8 @@ function setLaporanPreset(preset){
   if(preset==='hari'){ /* start = today */ }
   else if(preset==='minggu'){ start.setDate(today.getDate() - today.getDay()); }
   else if(preset==='bulan'){ start = new Date(today.getFullYear(), today.getMonth(), 1); }
-  document.getElementById('lapMulai').value = start.toISOString().slice(0,10);
-  document.getElementById('lapSelesai').value = today.toISOString().slice(0,10);
+  document.getElementById('lapMulai').value = wibDateStr(start);
+  document.getElementById('lapSelesai').value = wibDateStr(today);
   loadLaporan();
 }
 document.querySelectorAll('[data-preset]').forEach(b=>b.addEventListener('click', ()=>setLaporanPreset(b.dataset.preset)));
@@ -1294,9 +1297,9 @@ function setLabaRugiPreset(preset){
   if(preset==='hari'){ /* start = today */ }
   else if(preset==='minggu'){ start.setDate(today.getDate() - today.getDay()); }
   else if(preset==='bulan'){ start = new Date(today.getFullYear(), today.getMonth(), 1); }
-  document.getElementById('lrMulai').value = start.toISOString().slice(0,10);
-  document.getElementById('lrSelesai').value = today.toISOString().slice(0,10);
-  document.getElementById('lrTanggal').value = today.toISOString().slice(0,10);
+  document.getElementById('lrMulai').value = wibDateStr(start);
+  document.getElementById('lrSelesai').value = wibDateStr(today);
+  document.getElementById('lrTanggal').value = wibDateStr(today);
   loadLabaRugi();
 }
 document.querySelectorAll('[data-lrpreset]').forEach(b=>b.addEventListener('click', ()=>setLabaRugiPreset(b.dataset.lrpreset)));
@@ -1307,10 +1310,10 @@ async function loadLabaRugi(){
   const res = await api('getLabaRugi', payload);
   if(res.status!=='ok') return;
 
-  document.getElementById('lrOmzet').textContent = Math.round(res.totalOmzet).toLocaleString('id-ID');
-  document.getElementById('lrHpp').textContent = Math.round(res.totalHpp).toLocaleString('id-ID');
+  document.getElementById('lrOmzet').textContent = Math.round(res.totalOmzet).toLocaleString('id-ID',{timeZone:'Asia/Jakarta'});
+  document.getElementById('lrHpp').textContent = Math.round(res.totalHpp).toLocaleString('id-ID',{timeZone:'Asia/Jakarta'});
   document.getElementById('lrLabaKotor').textContent = rupiah(res.labaKotor);
-  document.getElementById('lrBeban').textContent = Math.round(res.totalBeban).toLocaleString('id-ID');
+  document.getElementById('lrBeban').textContent = Math.round(res.totalBeban).toLocaleString('id-ID',{timeZone:'Asia/Jakarta'});
   const labaBersihEl = document.getElementById('lrLabaBersih');
   labaBersihEl.textContent = rupiah(res.labaBersih);
   labaBersihEl.style.color = res.labaBersih>=0 ? 'var(--green-dark)' : 'var(--red)';
@@ -1322,7 +1325,7 @@ async function loadLabaRugi(){
   document.getElementById('lrExpenseTable').innerHTML = res.pengeluaran.length
     ? `<thead><tr><th>Tanggal</th><th>Kategori</th><th>Keterangan</th><th>Jumlah</th><th></th></tr></thead>
        <tbody>${res.pengeluaran.map(e=>`<tr>
-          <td>${new Date(e.tanggal).toLocaleDateString('id-ID')}</td>
+          <td>${new Date(e.tanggal).toLocaleDateString('id-ID',{timeZone:'Asia/Jakarta'})}</td>
           <td>${e.kategori}</td>
           <td>${e.keterangan||'-'}</td>
           <td class="mono">${rupiah(e.jumlah)}</td>
@@ -1371,7 +1374,7 @@ function openEditPengeluaran(e){
   document.getElementById('modalPengeluaranKategori').value = e.kategori;
   document.getElementById('modalPengeluaranKeterangan').value = e.keterangan||'';
   document.getElementById('modalPengeluaranJumlah').value = e.jumlah;
-  document.getElementById('modalPengeluaranTanggal').value = new Date(e.tanggal).toISOString().slice(0,10);
+  document.getElementById('modalPengeluaranTanggal').value = wibDateStr(new Date(e.tanggal));
   document.getElementById('modalPengeluaran').classList.add('show');
 }
 document.getElementById('modalPengeluaranCancel').addEventListener('click', ()=>document.getElementById('modalPengeluaran').classList.remove('show'));
