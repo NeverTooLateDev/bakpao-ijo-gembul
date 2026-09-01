@@ -1009,6 +1009,7 @@ function renderDetail(){
       ${order.catatan ? `<p style="font-size:13px;color:var(--ink-soft);margin-top:10px;"><b>Catatan:</b> ${order.catatan}</p>` : ''}
 
       <div class="quickbtns">
+        ${(order.status_pesanan!=='Dibatalkan' && !(order.status_pesanan==='Selesai' && order.status_pembayaran==='Lunas')) ? `<button class="btn btn-primary" onclick="selesaikanDanLunas()">✅ Selesai &amp; Lunas</button>` : ''}
         ${canEditOrder() ? `<button class="btn btn-outline" onclick="editOrder()">✏️ Edit Pesanan</button>` : ''}
         <button class="btn btn-outline" onclick="openStatusModal()">Ubah Status</button>
         ${order.status_pesanan!=='Dibatalkan' ? `<button class="btn btn-outline" onclick="openBayarModal()">Catat Pembayaran</button>` : ''}
@@ -1022,6 +1023,21 @@ function editOrder(){
   editingOrderId = currentOrder.order.id;
   editingOrderData = { order: currentOrder.order, items: currentOrder.items };
   switchView('pesananBaru');
+}
+async function selesaikanDanLunas(){
+  const order = currentOrder.order;
+  if(!confirm('Tandai pesanan '+order.nomor_pesanan+' sebagai Selesai & Lunas?')) return;
+  await api('updateOrderStatus', {orderId: order.id, status: 'Selesai'});
+  if(Number(order.sisa_tagihan) > 0){
+    await api('addPayment', {
+      orderId: order.id,
+      jumlah: Number(order.sisa_tagihan),
+      metode: 'Tunai',
+      tanggal: new Date().toISOString().slice(0,10),
+      catatan: 'Pelunasan otomatis saat pesanan diselesaikan'
+    });
+  }
+  openDetail(order.id);
 }
 function openStatusModal(){
   document.getElementById('modalStatusSelect').value = currentOrder.order.status_pesanan;
