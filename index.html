@@ -353,8 +353,6 @@ tr.clickable:hover{background:var(--green-light);}
     <div class="card">
       <div class="totals" style="border-top:none;padding-top:0;">
         <div class="row"><span>Pendapatan (Omzet)</span><span class="mono">Rp <span id="lrOmzet">0</span></span></div>
-        <div class="row"><span>HPP (Modal Bahan)</span><span class="mono">- Rp <span id="lrHpp">0</span></span></div>
-        <div class="row final"><span>Laba Kotor</span><span class="mono" id="lrLabaKotor">Rp 0</span></div>
         <div class="row" style="margin-top:8px;"><span>Beban Operasional</span><span class="mono">- Rp <span id="lrBeban">0</span></span></div>
         <div class="row final" style="font-size:22px;"><span>Laba Bersih</span><span class="mono" id="lrLabaBersih">Rp 0</span></div>
       </div>
@@ -1339,8 +1337,6 @@ async function loadLabaRugi(){
   if(res.status!=='ok') return;
 
   document.getElementById('lrOmzet').textContent = Math.round(res.totalOmzet).toLocaleString('id-ID',{timeZone:'Asia/Jakarta'});
-  document.getElementById('lrHpp').textContent = Math.round(res.totalHpp).toLocaleString('id-ID',{timeZone:'Asia/Jakarta'});
-  document.getElementById('lrLabaKotor').textContent = rupiah(res.labaKotor);
   document.getElementById('lrBeban').textContent = Math.round(res.totalBeban).toLocaleString('id-ID',{timeZone:'Asia/Jakarta'});
   const labaBersihEl = document.getElementById('lrLabaBersih');
   labaBersihEl.textContent = rupiah(res.labaBersih);
