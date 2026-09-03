@@ -1063,7 +1063,7 @@ async function selesaikanDanLunas(){
       catatan: 'Pelunasan otomatis saat pesanan diselesaikan'
     });
   }
-  openDetail(order.id);
+  switchView('riwayat');
 }
 function openStatusModal(){
   document.getElementById('modalStatusSelect').value = currentOrder.order.status_pesanan;
