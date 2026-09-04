@@ -1008,7 +1008,7 @@ function renderDetail(){
       <div style="display:flex;justify-content:space-between;flex-wrap:wrap;gap:10px;">
         <div>
           <h2>${order.nomor_pesanan}</h2>
-          <p style="color:var(--ink-soft);font-size:13px;margin-top:4px;">Dibuat: ${new Date(order.tanggal).toLocaleString('id-ID',{timeZone:'Asia/Jakarta'})}</p>
+          <p style="color:var(--ink-soft);font-size:13px;margin-top:4px;">Dibuat: ${new Date(order.tanggal).toLocaleDateString('id-ID',{timeZone:'Asia/Jakarta'})}</p>
           <p style="color:var(--ink-soft);font-size:13px;margin-top:2px;">Untuk: <b style="color:var(--green-dark);">${formatHariTanggal(order.tanggal_pesan || order.tanggal)}</b></p>
         </div>
         <div style="text-align:right;">
