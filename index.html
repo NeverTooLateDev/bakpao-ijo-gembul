@@ -283,7 +283,7 @@ tr.clickable:hover{background:var(--green-light);}
 
   <!-- DETAIL PESANAN -->
   <section class="view" id="view-detail">
-    <button class="back-link" data-goto="riwayat">← Kembali ke Riwayat Pesanan</button>
+    <button class="back-link" id="detailBackBtn" onclick="kembaliSetelahDetail()">← Kembali</button>
     <div id="detailContent"></div>
   </section>
 
@@ -350,7 +350,7 @@ tr.clickable:hover{background:var(--green-light);}
       <button class="btn btn-primary" id="lrApplyBtn">Tampilkan</button>
     </div>
 
-    <div class="card" style="padding-top:8px;">
+    <div class="card" style="padding-top:8px;padding-bottom:10px;">
       <div class="totals" style="border-top:none;padding-top:0;margin-top:0;">
         <div class="row"><span>Pendapatan (Omzet)</span><span class="mono">Rp <span id="lrOmzet">0</span></span></div>
         <div class="row" style="margin-top:8px;"><span>Beban Operasional</span><span class="mono">- Rp <span id="lrBeban">0</span></span></div>
@@ -682,6 +682,9 @@ async function loadMasterData(){
 
 /* ================= DASHBOARD ================= */
 let dashboardDefaultData = null;
+let detailSourceView = 'riwayat';
+let dashboardSelectedDateKey = null;
+let dashboardSelectedLabel = null;
 function todayKeyClient(){
   return wibDateStr();
 }
@@ -709,7 +712,7 @@ function renderDashChart(chart, selectedKey){
 }
 function renderDashTable(orders, tanggalLabel){
   document.getElementById('dashRecentTitle').textContent = tanggalLabel ? ('Pesanan untuk ' + tanggalLabel) : 'Pesanan Terbaru';
-  const tbody = orders.map(o=>`<tr class="clickable" onclick="openDetail('${o.id}')">
+  const tbody = orders.map(o=>`<tr class="clickable" onclick="openDetail('${o.id}','dashboard')">
       <td class="mono">${o.nomor_pesanan}</td>
       <td>${new Date(o.tanggal_pesan || o.tanggal).toLocaleDateString('id-ID',{timeZone:'Asia/Jakarta'})}</td>
       <td>${o.nama_pelanggan}</td>
@@ -725,18 +728,36 @@ async function selectDashboardDate(dateKey, label){
   const isToday = dateKey === todayKeyClient();
   const res = await api('dashboardByDate', {tanggal: dateKey});
   if(res.status!=='ok') return;
+  dashboardSelectedDateKey = dateKey;
+  dashboardSelectedLabel = label;
   renderDashStats(res.totalPesanan, res.totalPcs, res.omzet, res.belumSelesai, res.belumDibayar, isToday ? '(Hari Ini)' : '('+label+')');
   renderDashChart(dashboardDefaultData.chart, dateKey);
   renderDashTable(res.pesanan, label);
   document.getElementById('dashResetBtn').style.display = 'inline-block';
 }
 function resetDashboardToOverview(){
+  dashboardSelectedDateKey = null;
+  dashboardSelectedLabel = null;
   renderDashStats(dashboardDefaultData.totalPesananHariIni, dashboardDefaultData.totalPcsHariIni, dashboardDefaultData.omzetHariIni, dashboardDefaultData.belumSelesai, dashboardDefaultData.belumDibayar, 'Hari Ini');
   renderDashChart(dashboardDefaultData.chart, todayKeyClient());
   renderDashTable(dashboardDefaultData.pesananTerbaru, null);
   document.getElementById('dashResetBtn').style.display = 'none';
 }
 document.getElementById('dashResetBtn').addEventListener('click', resetDashboardToOverview);
+
+async function kembaliSetelahDetail(){
+  if(detailSourceView === 'dashboard'){
+    document.querySelectorAll('.view').forEach(v=>v.classList.remove('active'));
+    document.getElementById('view-dashboard').classList.add('active');
+    document.querySelectorAll('#tabs button').forEach(b=>b.classList.toggle('active', b.dataset.view==='dashboard'));
+    await loadDashboard();
+    if(dashboardSelectedDateKey){
+      await selectDashboardDate(dashboardSelectedDateKey, dashboardSelectedLabel);
+    }
+  } else {
+    switchView('riwayat');
+  }
+}
 
 /* ================= INPUT PESANAN ================= */
 let editingOrderId = null;
@@ -975,7 +996,7 @@ async function loadRiwayat(){
     <div class="row"><span>Sisa Tagihan</span><span class="mono">${rupiah(totalSisa)}</span></div>
   </div>`;
   table.innerHTML = `<thead><tr><th>No. Pesanan</th><th>Tgl Pesan</th><th>Pelanggan</th><th>Total</th><th>Status</th><th>Bayar</th></tr></thead>
-  <tbody>${res.orders.map(o=>`<tr class="clickable" onclick="openDetail('${o.id}')">
+  <tbody>${res.orders.map(o=>`<tr class="clickable" onclick="openDetail('${o.id}','riwayat')">
     <td class="mono">${o.nomor_pesanan}</td>
     <td>${new Date(o.tanggal_pesan || o.tanggal).toLocaleDateString('id-ID',{timeZone:'Asia/Jakarta'})}</td>
     <td>${o.nama_pelanggan}</td>
@@ -987,7 +1008,9 @@ async function loadRiwayat(){
 document.getElementById('filApplyBtn').addEventListener('click', loadRiwayat);
 
 /* ================= DETAIL PESANAN ================= */
-async function openDetail(orderId){
+async function openDetail(orderId, source){
+  detailSourceView = source || 'riwayat';
+  document.getElementById('detailBackBtn').textContent = detailSourceView==='dashboard' ? '← Kembali ke Dashboard' : '← Kembali ke Riwayat Pesanan';
   switchViewRaw('detail');
   document.getElementById('detailContent').innerHTML = '<p class="empty-msg">Memuat...</p>';
   const res = await api('getOrderDetail', {orderId});
@@ -1063,7 +1086,7 @@ async function selesaikanDanLunas(){
       catatan: 'Pelunasan otomatis saat pesanan diselesaikan'
     });
   }
-  switchView('riwayat');
+  kembaliSetelahDetail();
 }
 function openStatusModal(){
   document.getElementById('modalStatusSelect').value = currentOrder.order.status_pesanan;
